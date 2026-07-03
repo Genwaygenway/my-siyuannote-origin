@@ -1,17 +1,8 @@
-import {Constants} from "../../constants";
-import {setEditMode} from "../../protyle/util/setEditMode";
-import {fetchPost} from "../../util/fetch";
-import {zoomOut} from "../../menus/protyle";
-import {processRender} from "../../protyle/util/processCode";
-import {highlightRender} from "../../protyle/render/highlightRender";
-import {blockRender} from "../../protyle/render/blockRender";
-import {disabledForeverProtyle, setReadonlyByConfig} from "../../protyle/util/onGet";
-import {setStorageVal} from "../../protyle/util/compatibility";
 import {showMessage} from "../../dialog/message";
 import {hideElements} from "../../protyle/ui/hideElements";
 import {getCurrentEditor} from "../editor";
 import {closeModel, closePanel} from "./closePanel";
-import {backModel, destroyModel} from "../menu/model";
+import {backModel} from "../menu/model";
 
 export const clearMobileBackForward = (notebookId?: string) => {
     if (notebookId) {

@@ -17,7 +17,7 @@ import {
 } from "../../protyle/util/publishAccess";
 import {fetchPost, fetchSyncPost} from "../../util/fetch";
 import {restoreFileTreePaths} from "../../util/fileTreeRestore";
-import {openEmojiPanel} from "../../emoji";
+import {openEmojiPanel, unicode2Emoji} from "../../emoji";
 import {
     getFileTreeDefaultIconAttr,
     getFileTreeIconHTML,
@@ -28,6 +28,7 @@ import {importNotebook, newEncryptedNotebook, newNotebook, openEncryptedNotebook
 import {isNotCtrl, isOnlyMeta, isPhablet, setStorageVal, updateHotkeyAfterTip} from "../../protyle/util/compatibility";
 import {openFileById} from "../../editor/util";
 import {
+    hasClosestByAttribute,
     hasClosestByClassName,
     hasClosestByTag,
     hasTopClosestByTag
@@ -69,7 +70,6 @@ import {
     getMovedFileTreeSortRefreshTargets,
     getResponseEffectiveSortMode,
     isCustomFileTreeList,
-    reorderFileTreeNotebooks,
     type IDocSortModeChanged,
     updateFileTreeSortMode
 } from "../../util/fileTreeSort";
@@ -142,7 +142,7 @@ export class Files extends Model {
             let target = event.target as HTMLElement;
             while (target && !target.isEqualNode(this.closeElement)) {
                 const type = target.getAttribute("data-type");
-                if (target.classList.contains("b3-list-item__icon")) {
+                if (target.classList.contains("b3-list-item__icon") && !target.hasAttribute("data-notebook-group-icon")) {
                     event.preventDefault();
                     event.stopPropagation();
                     const notebookElement = target.closest("li[data-encrypted=true]");
@@ -173,6 +173,11 @@ export class Files extends Model {
                     event.stopPropagation();
                     event.preventDefault();
                     break;
+                } else if (type === "notebook-group") {
+                    this.toggleNotebookGroup(target);
+                    event.stopPropagation();
+                    event.preventDefault();
+                    break;
                 } else if (type === "open") {
                     const notebookId = target.getAttribute("data-url");
                     const liElement = target.closest("li");
@@ -196,14 +201,7 @@ export class Files extends Model {
         this.actionsElement.querySelector('[data-type="collapse"]').addEventListener("click", () => {
             this.parentDocClick.cancel();
             this.pinnedDocs.collapse();
-            Array.from(this.element.children).forEach(item => {
-                const liElement = item.firstElementChild;
-                const toggleElement = liElement.querySelector(".b3-list-item__arrow");
-                if (toggleElement.classList.contains("b3-list-item__arrow--open")) {
-                    toggleElement.classList.remove("b3-list-item__arrow--open");
-                    liElement.nextElementSibling.remove();
-                }
-            });
+            this.collapseTree();
             window.siyuan.storage[Constants.LOCAL_FILESPATHS] = [];
             setStorageVal(Constants.LOCAL_FILESPATHS, []);
         });
@@ -265,6 +263,13 @@ export class Files extends Model {
             let target = event.target as HTMLElement;
             if (!target.closest(".b3-list-item__text") || !isNotCtrl(event) || event.altKey || event.shiftKey) {
                 this.parentDocClick.cancel();
+            }
+            const groupElement = hasClosestByAttribute(target, "data-type", "notebook-group") as HTMLElement;
+            if (groupElement) {
+                this.toggleNotebookGroup(groupElement);
+                event.preventDefault();
+                event.stopPropagation();
+                return;
             }
             const ulElement = hasTopClosestByTag(target, "UL");
             let needFocus = true;
@@ -827,7 +832,7 @@ export class Files extends Model {
             if (!newElement) {
                 return;
             }
-            const newUlElement = hasTopClosestByTag(newElement, "UL");
+            const newUlElement = hasClosestByAttribute(newElement, "data-url", null) as HTMLElement;
             if (!newUlElement) {
                 return;
             }
@@ -1289,22 +1294,7 @@ export class Files extends Model {
                     emitToPlugins("opened-notebook", data);
                     break;
                 case "createnotebook":
-                    setNoteBook((notebooks) => {
-                        let previousId: string;
-                        notebooks.find(item => {
-                            if (!item.closed) {
-                                if (item.id === data.data.box.id) {
-                                    if (previousId) {
-                                        this.element.querySelector(`.b3-list[data-url="${previousId}"]`).insertAdjacentHTML("afterend", this.genNotebook(item));
-                                    } else {
-                                        this.element.insertAdjacentHTML("afterbegin", this.genNotebook(item));
-                                    }
-                                    return true;
-                                }
-                                previousId = item.id;
-                            }
-                        });
-                    });
+                    setNoteBook(() => this.init(false));
                     break;
                 case "closeBox":
                 case "removeBox":
@@ -1328,22 +1318,9 @@ export class Files extends Model {
                 case "li2doc":
                     this.selectItem(data.data.box.id, data.data.path);
                     break;
-                case "renamenotebook": {
-                    const name = data.data.name;
-                    if (typeof name !== "string") {
-                        break;
-                    }
-                    const notebook = window.siyuan.notebooks.find((item) => item.id === data.data.box);
-                    if (notebook) {
-                        notebook.name = name;
-                    }
-                    const textElement = this.element.querySelector(`[data-url="${data.data.box}"] .b3-list-item__text`) ||
-                        this.closeElement.querySelector(`[data-url="${data.data.box}"] .b3-list-item__text`);
-                    if (textElement) {
-                        textElement.textContent = name;
-                    }
+                case "renamenotebook":
+                    setNoteBook(() => this.init(false));
                     break;
-                }
                 case "rename":
                     this.onRename(data.data);
                     break;
@@ -1418,7 +1395,7 @@ export class Files extends Model {
             if (notebook.closed) {
                 return;
             }
-            const notebookElement = this.element.querySelector<HTMLElement>(`:scope > ul[data-url="${notebook.id}"]`);
+            const notebookElement = this.element.querySelector<HTMLElement>(`ul[data-url="${notebook.id}"]`);
             const rootElement = notebookElement?.querySelector<HTMLElement>(":scope > li[data-type=\"navigation-root\"]");
             if (!notebookElement || !rootElement) {
                 return;
@@ -1433,7 +1410,6 @@ export class Files extends Model {
                 iconElement?.removeAttribute("data-id");
             }
             this.updateDocActionElement(rootElement);
-            this.element.append(notebookElement);
         });
     }
 
@@ -1471,6 +1447,31 @@ export class Files extends Model {
         }
     }
 
+    private toggleNotebookGroup(item: HTMLElement) {
+        const arrowElement = item.querySelector(".b3-list-item__arrow");
+        const childElement = item.nextElementSibling;
+        if (!arrowElement || !childElement) {
+            return;
+        }
+        arrowElement.classList.toggle("b3-list-item__arrow--open");
+        childElement.classList.toggle("fn__none");
+    }
+
+    private collapseTree() {
+        this.element.querySelectorAll(".b3-list-item__arrow--open").forEach((arrowElement) => {
+            const liElement = hasClosestByClassName(arrowElement, "b3-list-item") as HTMLElement;
+            if (!liElement) {
+                return;
+            }
+            arrowElement.classList.remove("b3-list-item__arrow--open");
+            if (liElement.getAttribute("data-type") === "notebook-group") {
+                liElement.nextElementSibling?.classList.add("fn__none");
+            } else {
+                liElement.nextElementSibling?.remove();
+            }
+        });
+    }
+
     private updateNotebookIcon(data: { boxID: string, icon: string }) {
         if (!data || typeof data.boxID !== "string" || typeof data.icon !== "string") {
             return;
@@ -1493,7 +1494,39 @@ export class Files extends Model {
         }
     }
 
-    private genNotebook(item: INotebook) {
+    private genNotebookGroup(group: INotebookGroup, depth = 0) {
+        let html = "";
+        group.children.forEach((item) => {
+            html += this.genNotebookGroup(item, depth + 1);
+        });
+        group.notebooks.forEach((item) => {
+            html += this.genNotebook(item, getNotebookDisplayName(item.name), depth + 1);
+        });
+        return `<div class="b3-list b3-list--background" data-notebook-group-path="${escapeHtml(group.path)}">
+<div class="b3-list-item b3-list-item--hide-action" data-type="notebook-group" style="--file-toggle-width:${22 + depth * 18}px">
+    <span class="b3-list-item__toggle b3-list-item__toggle--hl">
+        <svg class="b3-list-item__arrow b3-list-item__arrow--open"><use xlink:href="#iconRight"></use></svg>
+    </span>
+    <span class="b3-list-item__icon" data-notebook-group-icon="true">${unicode2Emoji(window.siyuan.storage[Constants.LOCAL_IMAGES].folder)}</span>
+    <span class="b3-list-item__text">${escapeHtml(group.name)}</span>
+</div>
+<div>${html}</div>
+</div>`;
+    }
+
+    private genNotebookTree(notebooks: INotebook[]) {
+        const tree = buildNotebookGroupTree(notebooks);
+        let html = "";
+        tree.groups.forEach((item) => {
+            html += this.genNotebookGroup(item);
+        });
+        tree.notebooks.forEach((item) => {
+            html += this.genNotebook(item);
+        });
+        return html;
+    }
+
+    private genNotebook(item: INotebook, displayName = item.name, depth = 0) {
         const editingPublishAccess = this.element.classList.contains("file-tree__publish-access--active");
         const locked = item.encrypted && item.closed;
         const iconContent = locked
@@ -1518,7 +1551,7 @@ export class Files extends Model {
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text" style="cursor: default;">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text" style="cursor: default;">${escapeHtml(displayName)}</span>
     <span data-type="open" data-url="${item.id}" class="b3-list-item__action b3-tooltips b3-tooltips__w${(window.siyuan.config.readonly) ? " fn__none" : ""}" aria-label="${window.siyuan.languages.openBy}">
         <svg><use xlink:href="#iconOpen"></use></svg>
     </span>
@@ -1526,14 +1559,14 @@ export class Files extends Model {
         } else {
             return `<ul class="b3-list b3-list--background" data-url="${item.id}" data-sort="${item.sort}" data-sortmode="${item.sortMode}"${item.encrypted ? " data-encrypted=\"true\"" : ""}>
 <li class="b3-list-item b3-list-item--hide-action${actionClasses}" ${window.siyuan.config.fileTree.sort === 6 ? 'draggable="true"' : ""}
-style="--file-toggle-width:22px;--file-action-offset:22px"
+style="--file-toggle-width:${22 + depth * 18}px;--file-action-offset:22px"
 data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}" data-node-id="${window.siyuan.config.fileTree.boxDocEnabled ? item.id : ""}"${defaultIconAttr}>
     <span class="b3-list-item__toggle b3-list-item__toggle--hl${isBoxDoc && !hasChildren ? " fn__hidden" : ""}">
         <svg class="b3-list-item__arrow"><use xlink:href="#iconRight"></use></svg>
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text ariaLabel" data-position="parentE">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text ariaLabel" data-position="parentE">${escapeHtml(displayName)}</span>
     <span data-type="more-root" class="b3-list-item__action b3-tooltips b3-tooltips__w${(window.siyuan.config.readonly) ? " fn__none" : ""}" aria-label="${window.siyuan.languages.more}">
         <svg><use xlink:href="#iconMore"></use></svg>
     </span>
@@ -1549,6 +1582,8 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         let html = "";
         let closeHtml = "";
         let closeCounter = 0;
+        const notebooks: INotebook[] = [];
+        const closedNotebooks: INotebook[] = [];
         const scrollTop = this.element.scrollTop;
         this.knowledgeNotebookIds = [...this.getKnowledgeNotebookIds()];
         window.siyuan.notebooks.forEach((item) => {
@@ -1558,11 +1593,13 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
             }
             if (item.closed) {
                 closeCounter++;
-                closeHtml += this.genNotebook(item);
+                closedNotebooks.push(item);
             } else {
-                html += this.genNotebook(item);
+                notebooks.push(item);
             }
         });
+        html = this.genNotebookTree(notebooks);
+        closeHtml = this.genNotebookTree(closedNotebooks);
         this.element.innerHTML = html;
         this.closeElement.lastElementChild.innerHTML = closeHtml;
         const counterElement = this.closeElement.querySelector(".counter");
@@ -1616,35 +1653,9 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
     private onRemove(data: IWebSocketData) {
         // "doc2heading" 后删除文件或挂载帮助文档前的 unmount
         if (data.cmd === "closeBox" || data.cmd === "removeBox") {
-            setNoteBook((notebooks) => {
-                const targetElement = this.element.querySelector(`ul[data-url="${data.data.box}"] li[data-path="${"/"}"]`);
-                if (targetElement) {
-                    targetElement.parentElement.remove();
-                    if (data.cmd === "closeBox") {
-                        let closeHTML = "";
-                        notebooks.find(item => {
-                            if (item.closed) {
-                                closeHTML += this.genNotebook(item);
-                            }
-                        });
-                        this.closeElement.lastElementChild.innerHTML = closeHTML;
-                        const counterElement = this.closeElement.querySelector(".counter");
-                        counterElement.textContent = (parseInt(counterElement.textContent) + 1).toString();
-                        this.closeElement.classList.remove("fn__none");
-                    }
-                }
+            setNoteBook(() => {
+                this.init(false);
             });
-            if (data.cmd === "removeBox") {
-                const removeElement = this.closeElement.querySelector(`li[data-url="${data.data.box}"]`);
-                if (removeElement) {
-                    removeElement.remove();
-                    const counterElement = this.closeElement.querySelector(".counter");
-                    counterElement.textContent = (parseInt(counterElement.textContent) - 1).toString();
-                    if (counterElement.textContent === "0") {
-                        this.closeElement.classList.add("fn__none");
-                    }
-                }
-            }
             return;
         }
         data.data.ids.forEach((item: string) => {
@@ -1679,42 +1690,7 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         if (data.data.existed) {
             return;
         }
-        const liElement = this.closeElement.querySelector(`li[data-url="${data.data.box.id}"]`) as HTMLElement;
-        if (liElement) {
-            const counterElement = this.closeElement.querySelector(".counter");
-            counterElement.textContent = (parseInt(counterElement.textContent) - 1).toString();
-            if (counterElement.textContent === "0") {
-                this.closeElement.classList.add("fn__none");
-            }
-            liElement.remove();
-        }
-        setNoteBook((notebooks: INotebook[]) => {
-            const notebook = notebooks.find((item) => item.id === data.data.box.id) || data.data.box;
-            const html = this.genNotebook(notebook);
-            if (this.element.childElementCount === 0) {
-                this.element.innerHTML = html;
-            } else {
-                let previousId;
-                notebooks.find((item, index) => {
-                    if (item.id === data.data.box.id) {
-                        while (index > 0) {
-                            if (!notebooks[index - 1].closed) {
-                                previousId = notebooks[index - 1].id;
-                                break;
-                            } else {
-                                index--;
-                            }
-                        }
-                        return true;
-                    }
-                });
-                if (previousId) {
-                    this.element.querySelector(`[data-url="${previousId}"]`).insertAdjacentHTML("afterend", html);
-                } else {
-                    this.element.insertAdjacentHTML("afterbegin", html);
-                }
-            }
-        });
+        setNoteBook(() => this.init(false));
     }
 
     public onRename(data: { path: string, title: string, box: string }) {
@@ -1772,9 +1748,7 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
             this.docSortModeChanges.clear();
             const refreshLists = () => {
                 getFileTreeSortRefreshTargets(this.element, changes).forEach((target) => {
-                    const notebookElement = Array.from(this.element.children).find((item) =>
-                        item.getAttribute("data-url") === target.notebookId
-                    );
+                    const notebookElement = this.element.querySelector(`ul[data-url="${target.notebookId}"]`);
                     const liElement = Array.from(notebookElement?.querySelectorAll("li[data-path]") || []).find((item) =>
                         item.getAttribute("data-path") === target.path
                     );
@@ -1784,10 +1758,10 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
                 });
             };
             if (changes.some((item) => item.scope === "global")) {
-                setNoteBook((notebooks) => {
-                    reorderFileTreeNotebooks(this.element, this.closeElement.lastElementChild, notebooks);
+                setNoteBook(() => {
+                    this.init(false);
                     this.element.querySelectorAll<HTMLElement>(
-                        ":scope > ul[data-url] > li[data-type=\"navigation-root\"]"
+                        "ul[data-url] > li[data-type=\"navigation-root\"]"
                     ).forEach((item) => {
                         if (window.siyuan.config.fileTree.sort === 6) {
                             item.setAttribute("draggable", "true");
@@ -1807,8 +1781,8 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         if (window.siyuan.config.fileTree.sort !== 6) {
             return;
         }
-        setNoteBook((notebooks) => {
-            reorderFileTreeNotebooks(this.element, this.closeElement.lastElementChild, notebooks);
+        setNoteBook(() => {
+            this.init(false);
         });
     }
 
@@ -1908,9 +1882,7 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
             });
         }
         getMovedFileTreeSortRefreshTargets(this.element, moves).forEach((target) => {
-            const notebookElement = Array.from(this.element.children).find((item) =>
-                item.getAttribute("data-url") === target.notebookId
-            );
+            const notebookElement = this.element.querySelector(`ul[data-url="${target.notebookId}"]`);
             const liElement = Array.from(notebookElement?.querySelectorAll("li[data-path]") || []).find((item) =>
                 item.getAttribute("data-path") === target.path
             );

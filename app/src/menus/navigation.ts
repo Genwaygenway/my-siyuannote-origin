@@ -20,7 +20,7 @@ import {popSearch} from "../mobile/menu/search";
 /// #endif
 import {Constants} from "../constants";
 import {newFileInTree} from "../util/newFile";
-import {hasClosestByTag, hasTopClosestByTag} from "../protyle/util/hasClosest";
+import {hasClosestByTag} from "../protyle/util/hasClosest";
 import {deleteFiles, deleteNotebooks} from "../editor/deleteFile";
 /// #if !MOBILE
 import {openFileById} from "../editor/util";

@@ -21,7 +21,7 @@ import {Todo} from "./Todo";
 import {Knowledge} from "./Knowledge";
 import {Calendar} from "./Calendar";
 import {adjustDockPadding, hideActiveDockPanels, resetFloatDockSize} from "./util";
-import {hasClosestByAttribute, hasClosestByClassName} from "../../protyle/util/hasClosest";
+import {hasClosestByClassName} from "../../protyle/util/hasClosest";
 import type {App} from "../../index";
 import {Plugin} from "../../plugin";
 import {Custom} from "./Custom";
