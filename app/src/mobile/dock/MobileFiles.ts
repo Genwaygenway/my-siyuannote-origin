@@ -1,4 +1,4 @@
-import {hasClosestByClassName, hasClosestByTag, hasTopClosestByTag} from "../../protyle/util/hasClosest";
+import {hasClosestByAttribute, hasClosestByClassName, hasClosestByTag} from "../../protyle/util/hasClosest";
 import {escapeHtml} from "../../util/escape";
 import {Model} from "../../layout/Model";
 import {Constants} from "../../constants";
@@ -21,6 +21,7 @@ import {refreshFileTree} from "../../dialog/processSystem";
 import {setStorageVal} from "../../protyle/util/compatibility";
 import {showMessage} from "../../dialog/message";
 import {dragOverScroll, stopScrollAnimation} from "../../boot/globalEvent/dragover";
+import {buildNotebookGroupTree, getNotebookDisplayName, INotebookGroup} from "../../util/notebookGroup";
 
 export class MobileFiles extends Model {
     public element: HTMLElement;
@@ -71,7 +72,7 @@ export class MobileFiles extends Model {
         filesElement.addEventListener("click", (event: MouseEvent & { target: HTMLElement }) => {
             let target = event.target as HTMLElement;
             while (target && !target.isEqualNode(this.actionsElement)) {
-                if (target.classList.contains("b3-list-item__icon")) {
+                if (target.classList.contains("b3-list-item__icon") && !target.hasAttribute("data-notebook-group-icon")) {
                     target = target.previousElementSibling as HTMLElement;
                 }
                 const type = target.getAttribute("data-type");
@@ -98,14 +99,7 @@ export class MobileFiles extends Model {
                 } else if (type === "newNotebook") {
                     newNotebook();
                 } else if (type === "collapse") {
-                    Array.from(this.element.children).forEach(item => {
-                        const liElement = item.firstElementChild;
-                        const toggleElement = liElement.querySelector(".b3-list-item__arrow");
-                        if (toggleElement.classList.contains("b3-list-item__arrow--open")) {
-                            toggleElement.classList.remove("b3-list-item__arrow--open");
-                            liElement.nextElementSibling.remove();
-                        }
-                    });
+                    this.collapseTree();
                     event.preventDefault();
                     break;
                 } else if (target.classList.contains("b3-list-item__switch")) {
@@ -132,7 +126,7 @@ export class MobileFiles extends Model {
                     // 顶部栏中的按钮
                     target.classList.toggle("block__icon--active");
                     const editingPublishAccess = target.classList.contains("block__icon--active");
-                    this.element.querySelectorAll(".b3-list-item__icon").forEach(item => {
+                    this.element.querySelectorAll(".b3-list-item__icon:not([data-notebook-group-icon])").forEach(item => {
                         item.classList.toggle("fn__none", editingPublishAccess);
                         item.nextElementSibling.classList.toggle("fn__none", !editingPublishAccess);
                     });
@@ -144,8 +138,13 @@ export class MobileFiles extends Model {
                     event.preventDefault();
                     event.stopPropagation();
                     break;
+                } else if (target.parentElement?.getAttribute("data-type") === "notebook-group") {
+                    this.toggleNotebookGroup(target.parentElement);
+                    event.preventDefault();
+                    event.stopPropagation();
+                    break;
                 } else if (target.classList.contains("b3-list-item__toggle") && !target.classList.contains("fn__hidden") && target.parentElement.getAttribute("data-type") !== "toggle") {
-                    const ulElement = hasTopClosestByTag(target, "UL");
+                    const ulElement = hasClosestByAttribute(target, "data-url", null) as HTMLElement;
                     if (ulElement) {
                         const notebookId = ulElement.getAttribute("data-url");
                         this.getLeaf(target.parentElement, notebookId);
@@ -169,6 +168,11 @@ export class MobileFiles extends Model {
                     event.stopPropagation();
                     event.preventDefault();
                     break;
+                } else if (type === "notebook-group") {
+                    this.toggleNotebookGroup(target);
+                    event.stopPropagation();
+                    event.preventDefault();
+                    break;
                 } else if (type === "open") {
                     fetchPost("/api/notebook/openNotebook", {
                         notebook: target.getAttribute("data-url")
@@ -179,7 +183,7 @@ export class MobileFiles extends Model {
                 } else if (target.classList.contains("b3-list-item__action")) {
                     const type = target.getAttribute("data-type");
                     const pathString = target.parentElement.getAttribute("data-path");
-                    const ulElement = hasTopClosestByTag(target, "UL");
+                    const ulElement = hasClosestByAttribute(target, "data-url", null) as HTMLElement;
                     if (ulElement) {
                         const notebookId = ulElement.getAttribute("data-url");
                         if (!window.siyuan.config.readonly) {
@@ -203,7 +207,7 @@ export class MobileFiles extends Model {
                     if (target.getAttribute("data-type") === "navigation-file") {
                         openMobileFileById(app, target.getAttribute("data-node-id"), [Constants.CB_GET_SCROLL]);
                     } else if (target.getAttribute("data-type") === "navigation-root") {
-                        const ulElement = hasTopClosestByTag(target, "UL");
+                        const ulElement = hasClosestByAttribute(target, "data-url", null) as HTMLElement;
                         if (ulElement) {
                             const notebookId = ulElement.getAttribute("data-url");
                             this.getLeaf(target, notebookId);
@@ -327,7 +331,7 @@ export class MobileFiles extends Model {
                 if (!newElement) {
                     return;
                 }
-                const newUlElement = hasTopClosestByTag(newElement, "UL");
+                const newUlElement = hasClosestByAttribute(newElement, "data-url", null) as HTMLElement;
                 if (!newUlElement) {
                     return;
                 }
@@ -487,21 +491,8 @@ export class MobileFiles extends Model {
                     this.onMount(data);
                     break;
                 case "createnotebook":
-                    setNoteBook((notebooks) => {
-                        let previousId: string;
-                        notebooks.find(item => {
-                            if (!item.closed) {
-                                if (item.id === data.data.box.id) {
-                                    if (previousId) {
-                                        this.element.querySelector(`.b3-list[data-url="${previousId}"]`).insertAdjacentHTML("afterend", this.genNotebook(data.data.box));
-                                    } else {
-                                        this.element.insertAdjacentHTML("afterbegin", this.genNotebook(data.data.box));
-                                    }
-                                    return true;
-                                }
-                                previousId = item.id;
-                            }
-                        });
+                    setNoteBook(() => {
+                        this.init(false);
                     });
                     break;
                 case "closeBox":
@@ -525,7 +516,9 @@ export class MobileFiles extends Model {
                     this.updateDocInfo(data);
                     break;
                 case "renamenotebook":
-                    this.element.querySelector(`[data-url="${data.data.box}"] .b3-list-item__text`).innerHTML = escapeHtml(data.data.name);
+                    setNoteBook(() => {
+                        this.init(false);
+                    });
                     break;
                 case "rename":
                     this.onRename(data.data);
@@ -605,7 +598,64 @@ export class MobileFiles extends Model {
         }
     }
 
-    private genNotebook(item: INotebook) {
+    private toggleNotebookGroup(item: HTMLElement) {
+        const arrowElement = item.querySelector(".b3-list-item__arrow");
+        const childElement = item.nextElementSibling;
+        if (!arrowElement || !childElement) {
+            return;
+        }
+        arrowElement.classList.toggle("b3-list-item__arrow--open");
+        childElement.classList.toggle("fn__none");
+    }
+
+    private collapseTree() {
+        this.element.querySelectorAll(".b3-list-item__arrow--open").forEach((arrowElement) => {
+            const liElement = hasClosestByClassName(arrowElement, "b3-list-item") as HTMLElement;
+            if (!liElement) {
+                return;
+            }
+            arrowElement.classList.remove("b3-list-item__arrow--open");
+            if (liElement.getAttribute("data-type") === "notebook-group") {
+                liElement.nextElementSibling?.classList.add("fn__none");
+            } else {
+                liElement.nextElementSibling?.remove();
+            }
+        });
+    }
+
+    private genNotebookGroup(group: INotebookGroup, depth = 0) {
+        let html = "";
+        group.children.forEach((item) => {
+            html += this.genNotebookGroup(item, depth + 1);
+        });
+        group.notebooks.forEach((item) => {
+            html += this.genNotebook(item, getNotebookDisplayName(item.name), depth + 1);
+        });
+        return `<div class="b3-list b3-list--background" data-notebook-group-path="${escapeHtml(group.path)}">
+<div class="b3-list-item" data-type="notebook-group" style="--file-toggle-width:${24 + depth * 18}px">
+    <span class="b3-list-item__toggle">
+        <svg class="b3-list-item__arrow b3-list-item__arrow--open"><use xlink:href="#iconRight"></use></svg>
+    </span>
+    <span class="b3-list-item__icon" data-notebook-group-icon="true">${unicode2Emoji(window.siyuan.storage[Constants.LOCAL_IMAGES].folder)}</span>
+    <span class="b3-list-item__text">${escapeHtml(group.name)}</span>
+</div>
+<div>${html}</div>
+</div>`;
+    }
+
+    private genNotebookTree(notebooks: INotebook[]) {
+        const tree = buildNotebookGroupTree(notebooks);
+        let html = "";
+        tree.groups.forEach((item) => {
+            html += this.genNotebookGroup(item);
+        });
+        tree.notebooks.forEach((item) => {
+            html += this.genNotebook(item);
+        });
+        return html;
+    }
+
+    private genNotebook(item: INotebook, displayName = item.name, depth = 0) {
         const editingPublishAccess = this.actionsElement.querySelector('[data-type="publish-access"]').classList.contains("block__icon--active");
         const emojiHTML = `<span class="b3-list-item__icon b3-tooltips b3-tooltips__e${editingPublishAccess ? " fn__none" : ""}" aria-label="${window.siyuan.languages.changeIcon}">${unicode2Emoji(item.icon || window.siyuan.storage[Constants.LOCAL_IMAGES].note)}</span>`;
         const switchHTML = `<span class="b3-list-item__switch b3-tooltips b3-tooltips__e${editingPublishAccess ? "" : " fn__none"}" aria-label="${window.siyuan.languages.publishAccess}">${getPublishAccessOptionByLevel("public").iconHTML}</span>`;
@@ -616,20 +666,20 @@ export class MobileFiles extends Model {
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text">${escapeHtml(displayName)}</span>
     <span data-type="open" data-url="${item.id}" class="b3-list-item__action${(window.siyuan.config.readonly) ? " fn__none" : ""}">
         <svg><use xlink:href="#iconOpen"></use></svg>
     </span>
 </li>`;
         } else {
             return `<ul class="b3-list b3-list--background" data-url="${item.id}" data-sortmode="${item.sortMode}">
-<li class="b3-list-item" data-type="navigation-root" data-path="/" style="--file-toggle-width:24px">
+<li class="b3-list-item" data-type="navigation-root" data-path="/" style="--file-toggle-width:${24 + depth * 18}px">
     <span class="b3-list-item__toggle${item.closed ? " fn__hidden" : ""}">
         <svg class="b3-list-item__arrow"><use xlink:href="#iconRight"></use></svg>
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text${item.closed ? " ft__on-surface" : ""}">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text${item.closed ? " ft__on-surface" : ""}">${escapeHtml(displayName)}</span>
     <span data-type="more-root" class="b3-list-item__action${(window.siyuan.config.readonly || item.closed) ? " fn__none" : ""}">
         <svg><use xlink:href="#iconMore"></use></svg>
     </span>
@@ -644,15 +694,19 @@ export class MobileFiles extends Model {
         let html = "";
         let closeHtml = "";
         let closeCounter = 0;
+        const notebooks: INotebook[] = [];
+        const closedNotebooks: INotebook[] = [];
         const scrollTop = this.element.scrollTop;
         window.siyuan.notebooks.forEach((item) => {
             if (item.closed) {
                 closeCounter++;
-                closeHtml += this.genNotebook(item);
+                closedNotebooks.push(item);
             } else {
-                html += this.genNotebook(item);
+                notebooks.push(item);
             }
         });
+        html = this.genNotebookTree(notebooks);
+        closeHtml = this.genNotebookTree(closedNotebooks);
         this.element.innerHTML = html;
         this.closeElement.lastElementChild.innerHTML = closeHtml;
         const counterElement = this.closeElement.querySelector(".counter");
@@ -734,35 +788,9 @@ export class MobileFiles extends Model {
     private onRemove(data: IWebSocketData) {
         // "doc2heading" 后删除文件或挂载帮助文档前的 unmount
         if (data.cmd === "closeBox" || data.cmd === "removeBox") {
-            setNoteBook((notebooks) => {
-                const targetElement = this.element.querySelector(`ul[data-url="${data.data.box}"] li[data-path="${"/"}"]`);
-                if (targetElement) {
-                    targetElement.parentElement.remove();
-                    if (data.cmd === "closeBox") {
-                        let closeHTML = "";
-                        notebooks.find(item => {
-                            if (item.closed) {
-                                closeHTML += this.genNotebook(item);
-                            }
-                        });
-                        this.closeElement.lastElementChild.innerHTML = closeHTML;
-                        const counterElement = this.closeElement.querySelector(".counter");
-                        counterElement.textContent = (parseInt(counterElement.textContent) + 1).toString();
-                        this.closeElement.classList.remove("fn__none");
-                    }
-                }
+            setNoteBook(() => {
+                this.init(false);
             });
-            if (data.cmd === "removeBox") {
-                const removeElement = this.closeElement.querySelector(`li[data-url="${data.data.box}"]`);
-                if (removeElement) {
-                    removeElement.remove();
-                    const counterElement = this.closeElement.querySelector(".counter");
-                    counterElement.textContent = (parseInt(counterElement.textContent) - 1).toString();
-                    if (counterElement.textContent === "0") {
-                        this.closeElement.classList.add("fn__none");
-                    }
-                }
-            }
             return;
         }
         data.data.ids.forEach((item: string) => {
@@ -816,33 +844,9 @@ export class MobileFiles extends Model {
                 this.closeElement.classList.add("fn__none");
             }
         }
-        setNoteBook((notebooks: INotebook[]) => {
-            const html = this.genNotebook(data.data.box);
-            if (this.element.childElementCount === 0) {
-                this.element.innerHTML = html;
-            } else {
-                let previousId;
-                notebooks.find((item, index) => {
-                    if (item.id === data.data.box.id) {
-                        while (index > 0) {
-                            if (!notebooks[index - 1].closed) {
-                                previousId = notebooks[index - 1].id;
-                                break;
-                            } else {
-                                index--;
-                            }
-                        }
-                        return true;
-                    }
-                });
-                if (previousId) {
-                    this.element.querySelector(`[data-url="${previousId}"]`).insertAdjacentHTML("afterend", html);
-                } else {
-                    this.element.insertAdjacentHTML("afterbegin", html);
-                }
-            }
+        setNoteBook(() => {
+            this.init(false);
         });
-
     }
 
     private onLsHTML(data: { files: IFile[], box: string, path: string }, scrollTop?: number) {

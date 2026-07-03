@@ -22,8 +22,7 @@ import {openFileById} from "../../editor/util";
 import {
     hasClosestByAttribute,
     hasClosestByClassName,
-    hasClosestByTag,
-    hasTopClosestByTag
+    hasClosestByTag
 } from "../../protyle/util/hasClosest";
 import {App} from "../../index";
 import {refreshFileTree} from "../../dialog/processSystem";
@@ -33,6 +32,7 @@ import {ipcRenderer} from "electron";
 import {hideTooltip, showTooltip} from "../../dialog/tooltip";
 import {selectOpenTab} from "./util";
 import {hideDragTip, showDragTip, transparentImgSrc} from "../../protyle/util/dragTip";
+import {buildNotebookGroupTree, getNotebookDisplayName, INotebookGroup} from "../../util/notebookGroup";
 
 export class Files extends Model {
     public element: HTMLElement;
@@ -82,7 +82,7 @@ export class Files extends Model {
             let target = event.target as HTMLElement;
             while (target && !target.isEqualNode(this.closeElement)) {
                 const type = target.getAttribute("data-type");
-                if (target.classList.contains("b3-list-item__icon")) {
+                if (target.classList.contains("b3-list-item__icon") && !target.hasAttribute("data-notebook-group-icon")) {
                     event.preventDefault();
                     event.stopPropagation();
                     const rect = target.getBoundingClientRect();
@@ -108,6 +108,11 @@ export class Files extends Model {
                     event.stopPropagation();
                     event.preventDefault();
                     break;
+                } else if (type === "notebook-group") {
+                    this.toggleNotebookGroup(target);
+                    event.stopPropagation();
+                    event.preventDefault();
+                    break;
                 } else if (type === "open") {
                     fetchPost("/api/notebook/openNotebook", {
                         notebook: target.getAttribute("data-url")
@@ -122,14 +127,7 @@ export class Files extends Model {
         });
         // 为了快捷键的 dispatch
         this.actionsElement.querySelector('[data-type="collapse"]').addEventListener("click", () => {
-            Array.from(this.element.children).forEach(item => {
-                const liElement = item.firstElementChild;
-                const toggleElement = liElement.querySelector(".b3-list-item__arrow");
-                if (toggleElement.classList.contains("b3-list-item__arrow--open")) {
-                    toggleElement.classList.remove("b3-list-item__arrow--open");
-                    liElement.nextElementSibling.remove();
-                }
-            });
+            this.collapseTree();
             window.siyuan.storage[Constants.LOCAL_FILESPATHS] = [];
             setStorageVal(Constants.LOCAL_FILESPATHS, []);
         });
@@ -188,7 +186,15 @@ export class Files extends Model {
         });
         this.element.addEventListener("click", (event) => {
             let target = event.target as HTMLElement;
-            const ulElement = hasTopClosestByTag(target, "UL");
+            const groupElement = hasClosestByAttribute(target, "data-type", "notebook-group") as HTMLElement;
+            if (groupElement) {
+                this.toggleNotebookGroup(groupElement);
+                event.preventDefault();
+                event.stopPropagation();
+                window.siyuan.menus.menu.remove();
+                return;
+            }
+            const ulElement = hasClosestByAttribute(target, "data-url", null) as HTMLElement;
             let needFocus = true;
             if (ulElement) {
                 const notebookId = ulElement.getAttribute("data-url");
@@ -623,7 +629,7 @@ export class Files extends Model {
             if (!newElement) {
                 return;
             }
-            const newUlElement = hasTopClosestByTag(newElement, "UL");
+            const newUlElement = hasClosestByAttribute(newElement, "data-url", null) as HTMLElement;
             if (!newUlElement) {
                 return;
             }
@@ -834,21 +840,8 @@ export class Files extends Model {
                     });
                     break;
                 case "createnotebook":
-                    setNoteBook((notebooks) => {
-                        let previousId: string;
-                        notebooks.find(item => {
-                            if (!item.closed) {
-                                if (item.id === data.data.box.id) {
-                                    if (previousId) {
-                                        this.element.querySelector(`.b3-list[data-url="${previousId}"]`).insertAdjacentHTML("afterend", this.genNotebook(data.data.box));
-                                    } else {
-                                        this.element.insertAdjacentHTML("afterbegin", this.genNotebook(data.data.box));
-                                    }
-                                    return true;
-                                }
-                                previousId = item.id;
-                            }
-                        });
+                    setNoteBook(() => {
+                        this.init(false);
                     });
                     break;
                 case "closeBox":
@@ -874,7 +867,9 @@ export class Files extends Model {
                     this.selectItem(data.data.box.id, data.data.path);
                     break;
                 case "renamenotebook":
-                    this.element.querySelector(`[data-url="${data.data.box}"] .b3-list-item__text`).innerHTML = escapeHtml(data.data.name);
+                    setNoteBook(() => {
+                        this.init(false);
+                    });
                     break;
                 case "rename":
                     this.onRename(data.data);
@@ -929,7 +924,64 @@ export class Files extends Model {
         }
     }
 
-    private genNotebook(item: INotebook) {
+    private toggleNotebookGroup(item: HTMLElement) {
+        const arrowElement = item.querySelector(".b3-list-item__arrow");
+        const childElement = item.nextElementSibling;
+        if (!arrowElement || !childElement) {
+            return;
+        }
+        arrowElement.classList.toggle("b3-list-item__arrow--open");
+        childElement.classList.toggle("fn__none");
+    }
+
+    private collapseTree() {
+        this.element.querySelectorAll(".b3-list-item__arrow--open").forEach((arrowElement) => {
+            const liElement = hasClosestByClassName(arrowElement, "b3-list-item") as HTMLElement;
+            if (!liElement) {
+                return;
+            }
+            arrowElement.classList.remove("b3-list-item__arrow--open");
+            if (liElement.getAttribute("data-type") === "notebook-group") {
+                liElement.nextElementSibling?.classList.add("fn__none");
+            } else {
+                liElement.nextElementSibling?.remove();
+            }
+        });
+    }
+
+    private genNotebookGroup(group: INotebookGroup, depth = 0) {
+        let html = "";
+        group.children.forEach((item) => {
+            html += this.genNotebookGroup(item, depth + 1);
+        });
+        group.notebooks.forEach((item) => {
+            html += this.genNotebook(item, getNotebookDisplayName(item.name), depth + 1);
+        });
+        return `<div class="b3-list b3-list--background" data-notebook-group-path="${escapeHtml(group.path)}">
+<div class="b3-list-item b3-list-item--hide-action" data-type="notebook-group" style="--file-toggle-width:${22 + depth * 18}px">
+    <span class="b3-list-item__toggle b3-list-item__toggle--hl">
+        <svg class="b3-list-item__arrow b3-list-item__arrow--open"><use xlink:href="#iconRight"></use></svg>
+    </span>
+    <span class="b3-list-item__icon" data-notebook-group-icon="true">${unicode2Emoji(window.siyuan.storage[Constants.LOCAL_IMAGES].folder)}</span>
+    <span class="b3-list-item__text">${escapeHtml(group.name)}</span>
+</div>
+<div>${html}</div>
+</div>`;
+    }
+
+    private genNotebookTree(notebooks: INotebook[]) {
+        const tree = buildNotebookGroupTree(notebooks);
+        let html = "";
+        tree.groups.forEach((item) => {
+            html += this.genNotebookGroup(item);
+        });
+        tree.notebooks.forEach((item) => {
+            html += this.genNotebook(item);
+        });
+        return html;
+    }
+
+    private genNotebook(item: INotebook, displayName = item.name, depth = 0) {
         const editingPublishAccess = this.element.classList.contains("file-tree__publish-access--active");
         const emojiHTML = `<span class="b3-list-item__icon b3-tooltips b3-tooltips__e${editingPublishAccess ? " fn__none" : ""}" aria-label="${window.siyuan.languages.changeIcon}">${unicode2Emoji(item.icon || window.siyuan.storage[Constants.LOCAL_IMAGES].note)}</span>`;
         const switchHTML = `<span class="b3-list-item__switch b3-tooltips b3-tooltips__e${editingPublishAccess ? "" : " fn__none"}" aria-label="${window.siyuan.languages.publishAccess}">${getPublishAccessOptionByLevel("public").iconHTML}</span>`;
@@ -940,7 +992,7 @@ export class Files extends Model {
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text" style="cursor: default;">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text" style="cursor: default;">${escapeHtml(displayName)}</span>
     <span data-type="open" data-url="${item.id}" class="b3-list-item__action b3-tooltips b3-tooltips__w${(window.siyuan.config.readonly) ? " fn__none" : ""}" aria-label="${window.siyuan.languages.openBy}">
         <svg><use xlink:href="#iconOpen"></use></svg>
     </span>
@@ -948,14 +1000,14 @@ export class Files extends Model {
         } else {
             return `<ul class="b3-list b3-list--background" data-url="${item.id}" data-sort="${item.sort}" data-sortmode="${item.sortMode}">
 <li class="b3-list-item b3-list-item--hide-action" ${window.siyuan.config.fileTree.sort === 6 ? 'draggable="true"' : ""} 
-style="--file-toggle-width:22px" 
+style="--file-toggle-width:${22 + depth * 18}px"
 data-type="navigation-root" data-path="/">
     <span class="b3-list-item__toggle b3-list-item__toggle--hl">
         <svg class="b3-list-item__arrow"><use xlink:href="#iconRight"></use></svg>
     </span>
     ${emojiHTML}
     ${switchHTML}
-    <span class="b3-list-item__text ariaLabel" data-position="parentE">${escapeHtml(item.name)}</span>
+    <span class="b3-list-item__text ariaLabel" data-position="parentE">${escapeHtml(displayName)}</span>
     <span data-type="more-root" class="b3-list-item__action b3-tooltips b3-tooltips__w${(window.siyuan.config.readonly) ? " fn__none" : ""}" aria-label="${window.siyuan.languages.more}">
         <svg><use xlink:href="#iconMore"></use></svg>
     </span>
@@ -970,15 +1022,19 @@ data-type="navigation-root" data-path="/">
         let html = "";
         let closeHtml = "";
         let closeCounter = 0;
+        const notebooks: INotebook[] = [];
+        const closedNotebooks: INotebook[] = [];
         const scrollTop = this.element.scrollTop;
         window.siyuan.notebooks.forEach((item) => {
             if (item.closed) {
                 closeCounter++;
-                closeHtml += this.genNotebook(item);
+                closedNotebooks.push(item);
             } else {
-                html += this.genNotebook(item);
+                notebooks.push(item);
             }
         });
+        html = this.genNotebookTree(notebooks);
+        closeHtml = this.genNotebookTree(closedNotebooks);
         this.element.innerHTML = html;
         this.closeElement.lastElementChild.innerHTML = closeHtml;
         const counterElement = this.closeElement.querySelector(".counter");
@@ -1013,35 +1069,9 @@ data-type="navigation-root" data-path="/">
     private onRemove(data: IWebSocketData) {
         // "doc2heading" 后删除文件或挂载帮助文档前的 unmount
         if (data.cmd === "closeBox" || data.cmd === "removeBox") {
-            setNoteBook((notebooks) => {
-                const targetElement = this.element.querySelector(`ul[data-url="${data.data.box}"] li[data-path="${"/"}"]`);
-                if (targetElement) {
-                    targetElement.parentElement.remove();
-                    if (data.cmd === "closeBox") {
-                        let closeHTML = "";
-                        notebooks.find(item => {
-                            if (item.closed) {
-                                closeHTML += this.genNotebook(item);
-                            }
-                        });
-                        this.closeElement.lastElementChild.innerHTML = closeHTML;
-                        const counterElement = this.closeElement.querySelector(".counter");
-                        counterElement.textContent = (parseInt(counterElement.textContent) + 1).toString();
-                        this.closeElement.classList.remove("fn__none");
-                    }
-                }
+            setNoteBook(() => {
+                this.init(false);
             });
-            if (data.cmd === "removeBox") {
-                const removeElement = this.closeElement.querySelector(`li[data-url="${data.data.box}"]`);
-                if (removeElement) {
-                    removeElement.remove();
-                    const counterElement = this.closeElement.querySelector(".counter");
-                    counterElement.textContent = (parseInt(counterElement.textContent) - 1).toString();
-                    if (counterElement.textContent === "0") {
-                        this.closeElement.classList.add("fn__none");
-                    }
-                }
-            }
             return;
         }
         data.data.ids.forEach((item: string) => {
@@ -1086,31 +1116,8 @@ data-type="navigation-root" data-path="/">
             }
             liElement.remove();
         }
-        setNoteBook((notebooks: INotebook[]) => {
-            const html = this.genNotebook(data.data.box);
-            if (this.element.childElementCount === 0) {
-                this.element.innerHTML = html;
-            } else {
-                let previousId;
-                notebooks.find((item, index) => {
-                    if (item.id === data.data.box.id) {
-                        while (index > 0) {
-                            if (!notebooks[index - 1].closed) {
-                                previousId = notebooks[index - 1].id;
-                                break;
-                            } else {
-                                index--;
-                            }
-                        }
-                        return true;
-                    }
-                });
-                if (previousId) {
-                    this.element.querySelector(`[data-url="${previousId}"]`).insertAdjacentHTML("afterend", html);
-                } else {
-                    this.element.insertAdjacentHTML("afterbegin", html);
-                }
-            }
+        setNoteBook(() => {
+            this.init(false);
         });
     }
 
@@ -1471,7 +1478,7 @@ aria-label="${ariaLabel}">${getDocDisplayName(item.name, item.titleEmpty, true)}
                 click: () => {
                     this.element.classList.toggle("file-tree__publish-access--active");
                     const editingPublishAccess = this.element.classList.contains("file-tree__publish-access--active");
-                    this.element.querySelectorAll(".b3-list-item__icon").forEach(item => {
+                    this.element.querySelectorAll(".b3-list-item__icon:not([data-notebook-group-icon])").forEach(item => {
                         item.classList.toggle("fn__none", editingPublishAccess);
                         item.nextElementSibling.classList.toggle("fn__none", !editingPublishAccess);
                     });
