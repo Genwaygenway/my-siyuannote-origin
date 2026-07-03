@@ -67,11 +67,6 @@ export const hintSlash = (key: string, protyle: IProtyle) => {
         value: '<div data-type="NodeAttributeView" data-av-type="table"></div>',
         html: `<div class="b3-list-item__first"><svg class="b3-list-item__graphic"><use xlink:href="#iconDatabase"></use></svg><span class="b3-list-item__text">${window.siyuan.languages.database}</span></div>`,
     }, {
-        filter: ["飞书多维表格", "飞书", "多维表格", "duoweibiaoge", "dwbg", "feishu", "lark", "base"],
-        id: "feishuBase",
-        value: '<div data-type="NodeAttributeView" data-av-type="table"></div>',
-        html: '<div class="b3-list-item__first"><svg class="b3-list-item__graphic"><use xlink:href="#iconDatabase"></use></svg><span class="b3-list-item__text">飞书多维表格</span><span class="b3-list-item__meta">本地数据库</span></div>',
-    }, {
         filter: [window.siyuan.languages.newFileRef, "create new doc with reference", "新建文档并引用", "xinjianwendangbingyinyong", "xjwdbyy"],
         id: "newFileRef",
         value: Constants.ZWSP + 4,
