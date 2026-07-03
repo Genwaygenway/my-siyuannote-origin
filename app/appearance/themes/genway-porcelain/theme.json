@@ -1,0 +1,12 @@
+{
+  "name": "genway-porcelain",
+  "author": "Genway",
+  "url": "https://github.com/Genwaygenway/my-siyuannote-origin",
+  "version": "1.0.0",
+  "displayName": {
+    "default": "Genway Porcelain"
+  },
+  "modes": [
+    "light"
+  ]
+}

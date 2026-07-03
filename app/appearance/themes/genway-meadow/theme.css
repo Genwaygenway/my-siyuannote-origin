@@ -1,0 +1,29 @@
+@import url("../daylight/theme.css");
+
+:root {
+    --b3-theme-primary: #3d7c49;
+    --b3-theme-primary-light: rgba(61, 124, 73, .54);
+    --b3-theme-primary-lighter: rgba(61, 124, 73, .34);
+    --b3-theme-primary-lightest: rgba(61, 124, 73, .12);
+    --b3-theme-secondary: #92703a;
+    --b3-theme-background: #fcfff9;
+    --b3-theme-background-light: #dcead3;
+    --b3-theme-surface: #f3f8ed;
+    --b3-theme-surface-light: rgba(243, 248, 237, .9);
+    --b3-theme-surface-lighter: #d0ddc5;
+    --b3-theme-on-background: #25311f;
+    --b3-theme-on-surface: #68745f;
+    --b3-theme-on-surface-light: rgba(104, 116, 95, .68);
+    --b3-body-background: #eef5e7;
+    --b3-toolbar-hover: rgba(252, 255, 249, .78);
+    --b3-border-color: #d1dec8;
+    --b3-list-hover: rgba(61, 124, 73, .09);
+    --b3-list-icon-hover: rgba(61, 124, 73, .14);
+    --b3-scroll-color: rgba(37, 49, 31, .22);
+    --b3-protyle-inline-link-color: #3d7c49;
+    --b3-protyle-inline-blockref-color: #6976a8;
+    --b3-protyle-inline-fileref-color: #8a6d39;
+    --b3-protyle-code-background: rgba(37, 49, 31, .06);
+    --b3-table-even-background: rgba(61, 124, 73, .045);
+    --b3-parent-background: var(--b3-theme-background);
+}

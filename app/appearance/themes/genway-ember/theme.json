@@ -1,0 +1,12 @@
+{
+  "name": "genway-ember",
+  "author": "Genway",
+  "url": "https://github.com/Genwaygenway/my-siyuannote-origin",
+  "version": "1.0.0",
+  "displayName": {
+    "default": "Genway Ember"
+  },
+  "modes": [
+    "dark"
+  ]
+}
