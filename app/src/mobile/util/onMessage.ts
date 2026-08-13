@@ -31,6 +31,7 @@ import {sanitizeKernelHTML} from "../../util/hostCapabilities";
 import {applyEntryVisibility} from "../../config/entryVisibility/runtime";
 import {removeMobileBacklinkContent} from "./backlinkPanels";
 import {isPaidUser, needSubscribe} from "../../util/needSubscribe";
+import {applySharedStorageVal, hydrateSharedStorage} from "../../util/sharedStorage";
 
 let statusTimeout: number;
 const statusElement = document.querySelector("#status") as HTMLElement;
@@ -102,6 +103,9 @@ export const onMessage = (app: App, data: IWebSocketData) => {
             case "syncMergeResult":
                 reloadSync(app, data.data);
                 break;
+            case "reloadSharedStorage":
+                void hydrateSharedStorage();
+                break;
             case "setConf":
                 window.siyuan.config = data.data;
                 syncGlobalPluginConfig(app, data.data.bazaar.petalDisabled);
@@ -151,10 +155,11 @@ export const onMessage = (app: App, data: IWebSocketData) => {
                 if (data.data.key === Constants.LOCAL_MOBILE_SIDE_PANEL) {
                     dispatchMobileSidePanelConfigChange();
                 }
+                applySharedStorageVal(data.data.key, data.data.val);
                 break;
             case "setLocalStorageVals":
                 Object.keys(data.data.keyVals).forEach((k) => {
-                    window.siyuan.storage[k] = data.data.keyVals[k];
+                    applySharedStorageVal(k, data.data.keyVals[k]);
                 });
                 if (Object.prototype.hasOwnProperty.call(data.data.keyVals, MOBILE_BARS_CONFIG_KEY)) {
                     showMobileBars();

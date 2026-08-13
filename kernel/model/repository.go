@@ -59,6 +59,7 @@ import (
 	"github.com/siyuan-note/siyuan/kernel/cache"
 	"github.com/siyuan-note/siyuan/kernel/conf"
 	"github.com/siyuan-note/siyuan/kernel/heif"
+	"github.com/siyuan-note/siyuan/kernel/sharedstorage"
 	"github.com/siyuan-note/siyuan/kernel/sql"
 	"github.com/siyuan-note/siyuan/kernel/task"
 	"github.com/siyuan-note/siyuan/kernel/treenode"
@@ -2809,6 +2810,9 @@ func processSyncMergeResult(exit, byHand bool, mergeResult *dejavu.MergeResult, 
 	}
 	for changedPath := range changedAttributeViewPaths {
 		queueExternalAttributeViewRefIndexByRepoPath(changedPath)
+	}
+	if sharedstorage.Changed(upserts) || sharedstorage.Changed(removes) {
+		util.BroadcastByType("main", "reloadSharedStorage", 0, "", nil)
 	}
 	needReloadFiletree = !needReloadUI && (needReloadFiletree || 0 < len(upsertRootIDs) || 0 < len(removeRootIDs))
 	if needReloadFiletree {

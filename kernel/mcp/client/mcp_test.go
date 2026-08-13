@@ -576,3 +576,51 @@ func TestReconnectMCPAsyncKeepsOtherConnections(t *testing.T) {
 	}
 	t.Fatal("target MCP reconnect did not finish")
 }
+func TestBuildCodexResumeArgs(t *testing.T) {
+	args, err := buildCodexResumeArgs(
+		[]string{"mcp-server", "-c", "feature=true"},
+		CodexResumeOptions{
+			ThreadID:        "019fad36-85af-78b3-ab0d-d1d686bd5c22",
+			Prompt:          "continue",
+			Model:           "gpt-5.6-sol",
+			ReasoningEffort: "xhigh",
+			Permission:      "siyuan-write",
+		},
+		"/tmp/codex-output.txt",
+		"/tmp/workspace/temp",
+		"workspace-write",
+	)
+	if err != nil {
+		t.Fatalf("build args failed: %s", err)
+	}
+	expected := []string{
+		"exec", "-c", "feature=true",
+		"--sandbox", "workspace-write",
+		"--cd", "/tmp/workspace/temp",
+		"--skip-git-repo-check",
+		"--color", "never",
+		"--output-last-message", "/tmp/codex-output.txt",
+		"-c", `approval_policy="never"`,
+		"--model", "gpt-5.6-sol",
+		"-c", `model_reasoning_effort="xhigh"`,
+		"-c", "sandbox_workspace_write.network_access=true",
+		"resume", "019fad36-85af-78b3-ab0d-d1d686bd5c22", "continue",
+	}
+	if !reflect.DeepEqual(args, expected) {
+		t.Fatalf("unexpected args:\n%v\nwant:\n%v", args, expected)
+	}
+}
+
+func TestFindCodexServer(t *testing.T) {
+	servers := []conf.MCPServer{
+		{Name: "Other", Enabled: true, Type: "stdio", Command: "other", Args: []string{"mcp-server"}},
+		{Name: "Codex", Enabled: true, Type: "stdio", Command: "codex", Args: []string{"mcp-server"}},
+	}
+	server, err := findCodexServer(servers)
+	if err != nil {
+		t.Fatalf("find server failed: %s", err)
+	}
+	if server.Command != "codex" {
+		t.Fatalf("unexpected server command: %s", server.Command)
+	}
+}

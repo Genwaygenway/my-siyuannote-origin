@@ -16,6 +16,7 @@ import {getMobileBacklinkPanels, removeMobileBacklinkContent} from "../mobile/ut
 /// #if !MOBILE
 import {removeBlockPanelEditors} from "../block/panelRemoval";
 /// #endif
+import {hydrateSharedStorage} from "./sharedStorage";
 
 export const reloadSync = (
     app: App,
@@ -26,6 +27,7 @@ export const reloadSync = (
     updateReadonly = true,
     onlyUpdateDoc = false
 ) => {
+    hydrateSharedStorage();
     if (hideMsg) {
         hideMessage();
     }

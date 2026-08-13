@@ -3,8 +3,6 @@ import {fetchPost} from "../util/fetch";
 import {ContractFormData} from "../util/contractFormData";
 import {Constants} from "../constants";
 /// #if !MOBILE
-import {Files} from "../layout/dock/Files";
-import {getDockByType} from "../layout/tabUtil";
 /// #endif
 import {getAllEditor, getAllModels} from "../layout/getAll";
 import {Dialog} from "../dialog";
@@ -1635,15 +1633,14 @@ export const updateFileTreeEmoji = (unicode: string, id: string, icon = "iconFil
         );
     }
     /// #else
-    const dockFile = getDockByType("file");
-    if (dockFile) {
-        const files = dockFile.data.file as Files;
+    getAllModels().files.find((files) => {
         if (!isNotebookIcon) {
             emojiElement = files.element.querySelector(`[data-node-id="${id}"] .b3-list-item__icon`);
         } else {
             emojiElement = files.element.querySelector(`[data-node-id="${id}"] .b3-list-item__icon`) || files.element.querySelector(`[data-url="${id}"] .b3-list-item__icon`) || files.closeElement.querySelector(`[data-url="${id}"] .b3-list-item__icon`);
         }
-    }
+        return Boolean(emojiElement);
+    });
     /// #endif
     const liElement = emojiElement?.closest("li") as HTMLElement | null;
     if (liElement) {

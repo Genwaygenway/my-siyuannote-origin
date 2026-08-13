@@ -5,7 +5,7 @@ import {Wnd} from "../Wnd";
 import {Tab} from "../Tab";
 import {Files} from "./Files";
 import {Outline} from "./Outline";
-import {getAllModels, getAllTabs} from "../getAll";
+import {getAllModels, getAllTabs, getAllWnds} from "../getAll";
 import {Bookmark} from "./Bookmark";
 import {Tag} from "./Tag";
 import {Graph} from "./Graph";
@@ -16,8 +16,12 @@ import {Inbox} from "./Inbox";
 import {Protyle} from "../../protyle";
 import {Backlink} from "./Backlink";
 import {AgentChat} from "./agent/AgentChat";
-import {adjustDockPadding, resetFloatDockSize} from "./util";
-import {hasClosestByClassName} from "../../protyle/util/hasClosest";
+import {CodexChat} from "./agent/CodexChat";
+import {Todo} from "./Todo";
+import {Knowledge} from "./Knowledge";
+import {Calendar} from "./Calendar";
+import {adjustDockPadding, hideActiveDockPanels, resetFloatDockSize} from "./util";
+import {hasClosestByAttribute, hasClosestByClassName} from "../../protyle/util/hasClosest";
 import type {App} from "../../index";
 import {Plugin} from "../../plugin";
 import {Custom} from "./Custom";
@@ -33,7 +37,7 @@ import {resolveDockPanelVisibility} from "./panelVisibility";
 import {syncDockEntryOrders} from "../../config/entryVisibility/runtime";
 import {isWindow} from "../../util/functions";
 
-const TYPES = ["file", "outline", "inbox", "bookmark", "tag", "graph", "globalGraph", "backlink", "agentChat"];
+const TYPES = ["file", "knowledge", "outline", "todo", "inbox", "bookmark", "tag", "graph", "globalGraph", "backlink", "codexChat", "agentChat", "calendar"];
 const DEFAULT_DOCK_SIZE = 232;
 const WIDE_DOCK_SIZE = 320;
 const WIDE_DOCK_TYPES = ["graph", "globalGraph", "backlink", "inbox"];
@@ -390,10 +394,11 @@ export class Dock {
         }
         const widePanel = Array.from(this.layout.element.querySelectorAll(".file-tree")).find((item) => {
             return (item.classList.contains("sy__backlink") || item.classList.contains("sy__graph") ||
-                item.classList.contains("sy__globalGraph") || item.classList.contains("sy__inbox")) &&
+                item.classList.contains("sy__globalGraph") || item.classList.contains("sy__inbox") ||
+                item.classList.contains("sy__todo")) &&
                 !item.classList.contains("fn__none") && !hasClosestByClassName(item, "fn__none");
         });
-        return widePanel ? WIDE_DOCK_SIZE : DEFAULT_DOCK_SIZE;
+        return widePanel ? (widePanel.classList.contains("sy__todo") ? 620 : WIDE_DOCK_SIZE) : DEFAULT_DOCK_SIZE;
     }
 
     public isPanelVisible() {
@@ -676,6 +681,14 @@ export class Dock {
         if (!type) {
             return;
         }
+        if (type === "todo" && !close && !removeDock) {
+            this.openTodoCenter(isSaveLayout);
+            return;
+        }
+        if (type === "calendar" && !close && !removeDock) {
+            this.openCalendarCenter(isSaveLayout);
+            return;
+        }
         const target = document.querySelector(`.dock__item[data-type="${type}"]`) as HTMLElement;
         const index = parseInt(target.getAttribute("data-index"));
         const wnd = this.layout.children[index] as Wnd;
@@ -702,6 +715,18 @@ export class Dock {
         }
         if (show && target.classList.contains("dock__item--active")) {
             target.classList.remove("dock__item--active", "dock__item--activefocus");
+        }
+        const index = parseInt(target.getAttribute("data-index"));
+        const wnd = this.layout.children[index] as Wnd;
+        const targetId = target.getAttribute("data-id");
+        const targetPanel = targetId && Array.from(
+            wnd.element.querySelector(".layout-tab-container").children,
+        ).find(item => item.getAttribute("data-id") === targetId);
+        if (targetId && !targetPanel) {
+            // 面板已销毁但按钮仍保留旧引用时，清理引用并在本次点击中重建面板。
+            target.removeAttribute("data-id");
+            target.classList.remove("dock__item--active", "dock__item--activefocus");
+            delete this.data[type];
         }
         if (target.classList.contains("dock__item--active") || removeDock) {
             if (!close) {
@@ -866,6 +891,20 @@ export class Dock {
                             }
                         });
                         break;
+                    case "todo":
+                        tab = new Tab({
+                            callback: (tab: Tab) => {
+                                tab.addModel(new Todo(this.app, tab));
+                            }
+                        });
+                        break;
+                    case "knowledge":
+                        tab = new Tab({
+                            callback: (tab: Tab) => {
+                                tab.addModel(new Knowledge(this.app, tab));
+                            }
+                        });
+                        break;
                     case "agentChat":
                         tab = new Tab({
                             callback: (tab: Tab) => {
@@ -874,6 +913,20 @@ export class Dock {
                                     close: () => this.toggleModel("agentChat", false, true),
                                     focus: () => setPanelFocus(tab.panelElement),
                                 }));
+                            }
+                        });
+                        break;
+                    case "codexChat":
+                        tab = new Tab({
+                            callback: (tab: Tab) => {
+                                tab.addModel(new CodexChat(this.app, tab));
+                            }
+                        });
+                        break;
+                    case "calendar":
+                        tab = new Tab({
+                            callback: (tab: Tab) => {
+                                tab.addModel(new Calendar(this.app, tab));
                             }
                         });
                         break;
@@ -1034,6 +1087,113 @@ export class Dock {
         }
     }
 
+    private openTodoCenter(isSaveLayout = true) {
+        hideActiveDockPanels(isSaveLayout);
+        const target = document.querySelector('.dock__item[data-type="todo"]') as HTMLElement;
+        target?.classList.remove("dock__item--active", "dock__item--activefocus");
+        if (!this.elements[0].querySelector(".dock__item--active") &&
+            !this.elements[1].querySelector(".dock__item--active")) {
+            if (this.position === "Left") {
+                this.layout.element.style.width = "0px";
+                this.layout.element.style.marginRight = "0px";
+            } else if (this.position === "Right") {
+                this.layout.element.style.width = "0px";
+                this.layout.element.style.marginLeft = "0px";
+            } else {
+                this.layout.element.style.height = "0px";
+                this.layout.element.style.marginTop = "0px";
+            }
+            this.resizeElement.classList.add("fn__none");
+            this.hideDock();
+        }
+        if (isSaveLayout) {
+            this.saveLocalPlugin("todo", {show: false});
+        }
+
+        const existingTodo = getAllModels().todo.find(item => item.parent?.panelElement.closest(".layout__center"));
+        if (existingTodo?.parent?.headElement) {
+            existingTodo.parent.parent.switchTab(existingTodo.parent.headElement);
+            return;
+        }
+
+        const wnds: Wnd[] = [];
+        getAllWnds(window.siyuan.layout.centerLayout, wnds);
+        const wnd = wnds.find(item => item.element.classList.contains("layout__wnd--active")) || wnds[0];
+        if (!wnd) {
+            return;
+        }
+        wnd.addTab(new Tab({
+            icon: "iconCheck",
+            title: window.siyuan.languages.todo,
+            callback: (tab: Tab) => {
+                tab.addModel(new Todo(this.app, tab, {center: true}));
+            }
+        }));
+    }
+
+    private openCalendarCenter(isSaveLayout = true) {
+        hideActiveDockPanels(isSaveLayout);
+        const target = document.querySelector('.dock__item[data-type="calendar"]') as HTMLElement;
+        target?.classList.remove("dock__item--active", "dock__item--activefocus");
+        if (!this.elements[0].querySelector(".dock__item--active") &&
+            !this.elements[1].querySelector(".dock__item--active")) {
+            if (this.position === "Left") {
+                this.layout.element.style.width = "0px";
+                this.layout.element.style.marginRight = "0px";
+            } else if (this.position === "Right") {
+                this.layout.element.style.width = "0px";
+                this.layout.element.style.marginLeft = "0px";
+            } else {
+                this.layout.element.style.height = "0px";
+                this.layout.element.style.marginTop = "0px";
+            }
+            this.resizeElement.classList.add("fn__none");
+            this.hideDock();
+        }
+        if (isSaveLayout) {
+            this.saveLocalPlugin("calendar", {show: false});
+        }
+
+        const existingCalendar = getAllModels().calendar.find(item => item.parent?.panelElement.closest(".layout__center"));
+        if (existingCalendar?.parent?.headElement) {
+            existingCalendar.parent.parent.switchTab(existingCalendar.parent.headElement);
+            this.closeEmptyCenterWnds();
+            return;
+        }
+
+        const wnds: Wnd[] = [];
+        getAllWnds(window.siyuan.layout.centerLayout, wnds);
+        const wnd = wnds.find(item => item.element.classList.contains("layout__wnd--active")) || wnds[0];
+        if (!wnd) {
+            return;
+        }
+        wnd.addTab(new Tab({
+            icon: "iconCalendar",
+            title: window.siyuan.languages.calendarTitle,
+            callback: (tab: Tab) => {
+                tab.addModel(new Calendar(this.app, tab, {center: true}));
+            }
+        }));
+        this.closeEmptyCenterWnds();
+    }
+
+    /** 关闭中心区除日历所在分屏外仅含空白开始页的分屏，让日历占满中心区域；有真实内容的分屏保留 */
+    private closeEmptyCenterWnds() {
+        const allWnds: Wnd[] = [];
+        getAllWnds(window.siyuan.layout.centerLayout, allWnds);
+        allWnds.forEach(item => {
+            const hasCalendar = item.children.some(tab => tab.model instanceof Calendar);
+            if (hasCalendar) {
+                return;
+            }
+            // 空白开始页页签没有 headElement 与 model，全部页签均为空白时整个分屏才可关闭
+            if (item.children.length > 0 && item.children.every(tab => !tab.headElement && !tab.model)) {
+                item.children.slice().forEach(tab => item.removeTab(tab.id, false, false));
+            }
+        });
+    }
+
+    public add(index: number, sourceElement: Element, previousType?: string) {
     public add(index: number, sourceElement: Element, previousType?: string, options: {
         syncEntryOrders?: boolean,
     } = {}) {

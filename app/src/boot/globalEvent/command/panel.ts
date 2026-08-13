@@ -5,7 +5,24 @@ import {upDownHint} from "../../../util/upDownHint";
 import {setStorageVal, updateHotkeyTip} from "../../../protyle/util/compatibility";
 import {isMobile} from "../../../util/functions";
 import {Constants} from "../../../constants";
-import {hasClosestByClassName} from "../../../protyle/util/hasClosest";
+import {Editor} from "../../../editor";
+/// #if MOBILE
+import {getCurrentEditor} from "../../../mobile/editor";
+import {popSearch} from "../../../mobile/menu/search";
+/// #else
+import {getActiveTab} from "../../../layout/tabUtil";
+import {Custom} from "../../../layout/dock/Custom";
+import {getAllModels} from "../../../layout/getAll";
+import {Search} from "../../../search";
+import {openSearch} from "../../../search/spread";
+/// #endif
+import {addEditorToDatabase, addFilesToDatabase} from "../../../protyle/render/av/addToDatabase";
+import {hasClosestBlock, hasClosestByClassName, hasTopClosestByTag} from "../../../protyle/util/hasClosest";
+import {onlyProtyleCommand} from "./protyle";
+import {globalCommand} from "./global";
+import {getDisplayName, getNotebookName, getTopPaths, movePathTo, moveToPath, pathPosix} from "../../../util/pathName";
+import {hintMoveBlock} from "../../../protyle/hint/extend";
+import {fetchSyncPost} from "../../../util/fetch";
 import {focusByRange} from "../../../protyle/util/selection";
 import {matchHotKey} from "../../../protyle/util/hotKey";
 import {captureCommandContext} from "../../../command/context";
@@ -209,4 +226,298 @@ export const commandPanel = (app: App, options: {
             refresh();
         }
     });
+};
+
+export const execByCommand = async (options: {
+    command: string,
+    app?: App,
+    previousRange?: Range,
+    protyle?: IProtyle,
+    fileLiElements?: Element[]
+}) => {
+    if (globalCommand(options.command, options.app)) {
+        return;
+    }
+
+    const isFileFocus = document.querySelector(".layout__tab--active")?.classList.contains("sy__file");
+
+    let protyle = options.protyle;
+    /// #if MOBILE
+    if (!protyle) {
+        protyle = getCurrentEditor().protyle;
+        options.previousRange = protyle.toolbar.range;
+    }
+    /// #endif
+    const range: Range = options.previousRange || (getSelection().rangeCount > 0 ? getSelection().getRangeAt(0) : document.createRange());
+    let fileLiElements = options.fileLiElements;
+    if (!isFileFocus && !protyle) {
+        if (range) {
+            window.siyuan.dialogs.find(item => {
+                if (item.editors) {
+                    Object.keys(item.editors).find(key => {
+                        if (item.editors[key].protyle.element.contains(range.startContainer)) {
+                            protyle = item.editors[key].protyle;
+                            return true;
+                        }
+                    });
+                    if (protyle) {
+                        return true;
+                    }
+                }
+            });
+        }
+        const activeTab = getActiveTab();
+        if (!protyle && activeTab) {
+            if (activeTab.model instanceof Editor) {
+                protyle = activeTab.model.editor.protyle;
+            } else if (activeTab.model instanceof Search) {
+                if (activeTab.model.element.querySelector("#searchUnRefPanel").classList.contains("fn__none")) {
+                    protyle = activeTab.model.editors.edit.protyle;
+                } else {
+                    protyle = activeTab.model.editors.unRefEdit.protyle;
+                }
+            } else if (activeTab.model instanceof Custom && activeTab.model.editors?.length > 0) {
+                if (range) {
+                    activeTab.model.editors.find(item => {
+                        if (item.protyle.element.contains(range.startContainer)) {
+                            protyle = item.protyle;
+                            return true;
+                        }
+                    });
+                }
+            }
+        } else if (!protyle) {
+            if (!protyle && range) {
+                window.siyuan.blockPanels.find(item => {
+                    item.editors.find(editorItem => {
+                        if (editorItem.protyle.element.contains(range.startContainer)) {
+                            protyle = editorItem.protyle;
+                            return true;
+                        }
+                    });
+                    if (protyle) {
+                        return true;
+                    }
+                });
+            }
+            const models = getAllModels();
+            if (!protyle) {
+                models.backlink.find(item => {
+                    if (item.element.classList.contains("layout__tab--active")) {
+                        if (range) {
+                            item.editors.find(editor => {
+                                if (editor.protyle.element.contains(range.startContainer)) {
+                                    protyle = editor.protyle;
+                                    return true;
+                                }
+                            });
+                        }
+                        if (!protyle && item.editors.length > 0) {
+                            protyle = item.editors[0].protyle;
+                        }
+                        return true;
+                    }
+                });
+            }
+            if (!protyle) {
+                models.editor.find(item => {
+                    if (item.parent.headElement.classList.contains("item--focus")) {
+                        protyle = item.editor.protyle;
+                        return true;
+                    }
+                });
+            }
+        }
+    }
+
+    // only protyle
+    if (!isFileFocus && protyle && onlyProtyleCommand({
+        command: options.command,
+        previousRange: range,
+        protyle
+    })) {
+        return;
+    }
+
+    if (isFileFocus && !fileLiElements) {
+        const files = getAllModels().files.find(item => item.element.contains(document.activeElement));
+        fileLiElements = files ? Array.from(files.element.querySelectorAll(".b3-list-item--focus")) : [];
+    }
+
+    // 全局命令，在没有 protyle 和文件树没聚焦的情况下执行
+    if ((!protyle && !isFileFocus) ||
+        (isFileFocus && (!fileLiElements || fileLiElements.length === 0)) ||
+        (isMobile() && !document.getElementById("empty").classList.contains("fn__none"))) {
+        if (options.command === "replace") {
+            /// #if MOBILE
+            popSearch(options.app, {hasReplace: true, page: 1});
+            /// #else
+            openSearch({
+                app: options.app,
+                hotkey: Constants.DIALOG_REPLACE,
+                key: range.toString()
+            });
+            /// #endif
+        } else if (options.command === "search") {
+            /// #if MOBILE
+            popSearch(options.app, {hasReplace: false, page: 1});
+            /// #else
+            openSearch({
+                app: options.app,
+                hotkey: Constants.DIALOG_SEARCH,
+                key: range.toString()
+            });
+            /// #endif
+        }
+        return;
+    }
+
+    // protyle and file tree
+    switch (options.command) {
+        case "replace":
+            if (!isFileFocus) {
+                /// #if MOBILE
+                const response = await fetchSyncPost("/api/filetree/getHPathByPath", {
+                    notebook: protyle.notebookId,
+                    path: protyle.path.endsWith(".sy") ? protyle.path : protyle.path + ".sy"
+                });
+                popSearch(options.app, {
+                    page: 1,
+                    hasReplace: true,
+                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), response.data),
+                    idPath: [pathPosix().join(protyle.notebookId, protyle.path)]
+                });
+                /// #else
+                openSearch({
+                    app: options.app,
+                    hotkey: Constants.DIALOG_REPLACE,
+                    key: range.toString(),
+                    notebookId: protyle.notebookId,
+                    searchPath: protyle.path
+                });
+                /// #endif
+            } else {
+                /// #if !MOBILE
+                const topULElement = hasTopClosestByTag(fileLiElements[0], "UL");
+                if (!topULElement) {
+                    return false;
+                }
+                const notebookId = topULElement.getAttribute("data-url");
+                const pathString = fileLiElements[0].getAttribute("data-path");
+                const isFile = fileLiElements[0].getAttribute("data-type") === "navigation-file";
+                if (isFile) {
+                    openSearch({
+                        app: options.app,
+                        hotkey: Constants.DIALOG_REPLACE,
+                        notebookId: notebookId,
+                        searchPath: getDisplayName(pathString, false, true)
+                    });
+                } else {
+                    openSearch({
+                        app: options.app,
+                        hotkey: Constants.DIALOG_REPLACE,
+                        notebookId: notebookId,
+                    });
+                }
+                /// #endif
+            }
+            break;
+        case "search":
+            if (!isFileFocus) {
+                /// #if MOBILE
+                const response = await fetchSyncPost("/api/filetree/getHPathByPath", {
+                    notebook: protyle.notebookId,
+                    path: protyle.path.endsWith(".sy") ? protyle.path : protyle.path + ".sy"
+                });
+                popSearch(options.app, {
+                    page: 1,
+                    hasReplace: false,
+                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), response.data),
+                    idPath: [pathPosix().join(protyle.notebookId, protyle.path)]
+                });
+                /// #else
+                openSearch({
+                    app: options.app,
+                    hotkey: Constants.DIALOG_SEARCH,
+                    key: range.toString(),
+                    notebookId: protyle.notebookId,
+                    searchPath: protyle.path
+                });
+                /// #endif
+            } else {
+                /// #if !MOBILE
+                const topULElement = hasTopClosestByTag(fileLiElements[0], "UL");
+                if (!topULElement) {
+                    return false;
+                }
+                const notebookId = topULElement.getAttribute("data-url");
+                const pathString = fileLiElements[0].getAttribute("data-path");
+                const isFile = fileLiElements[0].getAttribute("data-type") === "navigation-file";
+                if (isFile) {
+                    openSearch({
+                        app: options.app,
+                        hotkey: Constants.DIALOG_SEARCH,
+                        notebookId: notebookId,
+                        searchPath: getDisplayName(pathString, false, true)
+                    });
+                } else {
+                    openSearch({
+                        app: options.app,
+                        hotkey: Constants.DIALOG_SEARCH,
+                        notebookId: notebookId,
+                    });
+                }
+                /// #endif
+            }
+            break;
+        case "addToDatabase":
+            if (!isFileFocus) {
+                addEditorToDatabase(protyle, range);
+            } else {
+                addFilesToDatabase(fileLiElements);
+            }
+            break;
+        case "move":
+            if (!isFileFocus) {
+                const nodeElement = hasClosestBlock(range.startContainer);
+                if (protyle.title?.editElement.contains(range.startContainer) || !nodeElement || window.siyuan.menus.menu.element.getAttribute("data-name") === Constants.MENU_TITLE) {
+                    movePathTo({
+                        cb: (toPath, toNotebook) => {
+                            moveToPath([protyle.path], toNotebook[0], toPath[0]);
+                        },
+                        paths: [protyle.path],
+                        range,
+                        flashcard: false,
+                        rootIDs: [protyle.block.rootID]
+                    });
+                } else if (nodeElement && range && protyle.element.contains(range.startContainer)) {
+                    let selectElements = Array.from(protyle.wysiwyg.element.querySelectorAll(".protyle-wysiwyg--select"));
+                    if (selectElements.length === 0) {
+                        selectElements = [nodeElement];
+                    }
+                    movePathTo({
+                        cb: (toPath) => {
+                            hintMoveBlock(toPath[0], selectElements, protyle);
+                        },
+                        flashcard: false,
+                        rootIDs: [protyle.block.rootID]
+                    });
+                }
+            } else {
+                const paths = getTopPaths(fileLiElements);
+                const rootIDs: string[] = [];
+                fileLiElements.forEach(item => {
+                    rootIDs.push(item.getAttribute("data-node-id"));
+                });
+                movePathTo({
+                    cb: (toPath, toNotebook) => {
+                        moveToPath(paths, toNotebook[0], toPath[0]);
+                    },
+                    paths,
+                    rootIDs,
+                    flashcard: false
+                });
+            }
+            break;
+    }
 };

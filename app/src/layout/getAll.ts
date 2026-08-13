@@ -14,7 +14,10 @@ import {Search} from "../search";
 import {Files} from "./dock/Files";
 import {Bookmark} from "./dock/Bookmark";
 import {Tag} from "./dock/Tag";
+import {Todo} from "./dock/Todo";
+import {Knowledge} from "./dock/Knowledge";
 import {Custom} from "./dock/Custom";
+import {Calendar} from "./dock/Calendar";
 import {Wnd} from "./Wnd";
 /// #endif
 
@@ -72,10 +75,13 @@ export const getAllModels = () => {
         backlink: [],
         search: [],
         inbox: [],
+        todo: [],
+        knowledge: [],
         files: [],
         bookmark: [],
         tag: [],
         custom: [],
+        calendar: [],
     };
     /// #if !MOBILE
     const getTabs = (layout: Layout) => {
@@ -98,12 +104,19 @@ export const getAllModels = () => {
                     models.asset.push(model);
                 } else if (model instanceof Search) {
                     models.search.push(model);
+                } else if (model instanceof Knowledge) {
+                    models.knowledge.push(model);
+                    models.files.push(model);
                 } else if (model instanceof Files) {
                     models.files.push(model);
                 } else if (model instanceof Bookmark) {
                     models.bookmark.push(model);
                 } else if (model instanceof Tag) {
                     models.tag.push(model);
+                } else if (model instanceof Todo) {
+                    models.todo.push(model);
+                } else if (model instanceof Calendar) {
+                    models.calendar.push(model);
                 } else if (model instanceof Custom) {
                     models.custom.push(model);
                 }

@@ -39,6 +39,9 @@ export const openModel = (obj: {
     destroyModel();
     const modelElement = document.getElementById("model");
     const isOpen = modelElement.style.transform === "translateX(0px)";
+    modelElement.dispatchEvent(new CustomEvent("siyuan-model-hide"));
+    modelElement.classList.remove("mobile-workspace");
+    document.getElementById("modelMain").classList.remove("fn__flex-column", "mobile-workspace__main");
     modelElement.style.transform = "translateX(0px)";
     modelElement.style.zIndex = (++window.siyuan.zIndex).toString();
     const iconElement = modelElement.querySelector(".toolbar__icon") as HTMLElement;

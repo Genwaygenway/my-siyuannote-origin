@@ -20,13 +20,14 @@ import {popSearch} from "../mobile/menu/search";
 /// #endif
 import {Constants} from "../constants";
 import {newFileInTree} from "../util/newFile";
-import {hasClosestByTag} from "../protyle/util/hasClosest";
+import {hasClosestByTag, hasTopClosestByTag} from "../protyle/util/hasClosest";
 import {deleteFiles, deleteNotebooks} from "../editor/deleteFile";
 /// #if !MOBILE
 import {openFileById} from "../editor/util";
 /// #endif
 import {getDockByType} from "../layout/tabUtil";
 import {Files} from "../layout/dock/Files";
+import {getFileTreeByElement, getFileTreeByNotebook} from "../layout/dock/util";
 import {openCardByData} from "../card/openCard";
 import {viewCards} from "../card/viewCards";
 import type {App} from "../index";
@@ -519,7 +520,7 @@ export const initNavigationMenu = (app: App, liElement: HTMLElement) => {
                 /// #if MOBILE
                 files = window.siyuan.mobile.docks.file;
                 /// #else
-                files = (getDockByType("file").data["file"] as Files);
+                files = getFileTreeByElement(liElement);
                 /// #endif
                 const notebook = window.siyuan.notebooks.find((item) => item.id === notebookId);
                 if (notebook) {
@@ -1069,11 +1070,14 @@ export const genImportMenu = (notebookId: string, pathString: string) => {
         let files;
         /// #if MOBILE
         files = window.siyuan.mobile.docks.file;
-        /// #else
-        files = (getDockByType("file").data["file"] as Files);
+                /// #else
+        files = getFileTreeByNotebook(notebookId);
         /// #endif
-        const liElement = files.element.querySelector(`[data-path="${pathString}"]`);
-        liElement.querySelector(".b3-list-item__toggle").classList.remove("fn__hidden");
+        const liElement = files?.element.querySelector(`[data-path="${pathString}"]`);
+        if (!liElement) {
+            return;
+        }
+        liElement.querySelector(".b3-list-item__toggle")?.classList.remove("fn__hidden");
         syncFileTreeItemDefaultIcon(liElement as HTMLElement);
         files.getLeaf(liElement, notebookId, true);
         window.siyuan.menus.menu.remove();

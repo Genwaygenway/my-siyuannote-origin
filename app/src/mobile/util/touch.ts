@@ -250,6 +250,9 @@ export const handleTouchEnd = (event: TouchEvent) => {
     const reversing = typeof lastClientX !== "undefined";
     const modelElement = hasClosestByAttribute(target, "id", "model", true);
     if (modelElement) {
+        if (hasClosestByClassName(target, "todo__mobileFilters", true)) {
+            return;
+        }
         // 面板内横向滚动内容（如数据快照操作按钮行）时不触发关闭面板
         if (!scrollBlock && isXScroll && firstDirection === "toRight" && !reversing &&
             !hasClosestByClassName(target, "protyle-wysiwyg", true) &&

@@ -1,7 +1,7 @@
 type TPluginDockPosition = "LeftTop" | "LeftBottom" | "RightTop" | "RightBottom" | "BottomLeft" | "BottomRight"
 type TDockPosition = "Left" | "Right" | "Bottom"
 type TWS = "main" | "filetree" | "protyle" | "backlink" | "bookmark" | "graph" | "outline" | "tag" | "agentChat"
-type TDock = "file" | "outline" | "inbox" | "bookmark" | "tag" | "graph" | "globalGraph" | "backlink" | "agentChat"
+type TDock = "file" | "knowledge" | "outline" | "todo" | "inbox" | "bookmark" | "tag" | "graph" | "globalGraph" | "backlink" | "codexChat" | "agentChat" | "calendar"
 type TTab = "Outline" | "Graph" | "Backlink" | "Asset" | "Editor" | "Search" | "siyuan-card"
 type TOperation = IOperation["action"];
 type TBazaarType = "templates" | "icons" | "widgets" | "themes" | "plugins"
@@ -999,12 +999,15 @@ interface IModels {
     outline: import("../layout/dock/Outline").Outline[]
     backlink: import("../layout/dock/Backlink").Backlink[]
     inbox: import("../layout/dock/Inbox").Inbox[]
+    todo: import("../layout/dock/Todo").Todo[]
+    knowledge: import("../layout/dock/Knowledge").Knowledge[]
     files: import("../layout/dock/Files").Files[]
     bookmark: import("../layout/dock/Bookmark").Bookmark[]
     tag: import("../layout/dock/Tag").Tag[]
     asset: import("../asset").Asset[]
     search: import("../search").Search[]
     custom: import("../layout/dock/Custom").Custom[]
+    calendar: import("../layout/dock/Calendar").Calendar[]
 }
 
 interface IMenu {

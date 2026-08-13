@@ -1,0 +1,23 @@
+{
+  "name": "siyuan-folder-lock",
+  "version": "0.3.0",
+  "description": "SiYuan document security lock plugin",
+  "scripts": {
+    "build": "npm run typecheck && webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "test": "node tests/run.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^14.0.0",
+    "css-loader": "^6.9.0",
+    "mini-css-extract-plugin": "^2.7.0",
+    "siyuan": "^1.2.3",
+    "style-loader": "^3.3.0",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.0",
+    "zip-webpack-plugin": "^4.0.3"
+  }
+}

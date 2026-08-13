@@ -33,7 +33,7 @@ import {resize} from "../protyle/util/resize";
 import {Search} from "../search";
 import type {App} from "../index";
 import {preventScroll} from "../protyle/scroll/preventScroll";
-import {clearOBG} from "../layout/dock/util";
+import {clearOBG, getFileTreeByNotebook} from "../layout/dock/util";
 import {Model} from "../layout/Model";
 import {hideElements} from "../protyle/ui/hideElements";
 import {isBrowserRenderableImagePath} from "../util/imageURL";
@@ -729,7 +729,7 @@ export const updatePanelByEditor = (options: {
             pushBackByEditor(options.protyle);
         }
         if (window.siyuan.config.fileTree.alwaysSelectOpenedFile && options.protyle) {
-            const fileModel = getDockByType("file")?.data.file;
+            const fileModel = getFileTreeByNotebook(options.protyle.notebookId);
             if (fileModel instanceof Files) {
                 const target = fileModel.element.querySelector(`li[data-path="${options.protyle.path}"]`);
                 if (!target || (target && !target.classList.contains("b3-list-item--focus"))) {

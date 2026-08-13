@@ -1,3 +1,12 @@
+import {Constants} from "../../constants";
+import {setEditMode} from "../../protyle/util/setEditMode";
+import {fetchPost} from "../../util/fetch";
+import {zoomOut} from "../../menus/protyle";
+import {processRender} from "../../protyle/util/processCode";
+import {highlightRender} from "../../protyle/render/highlightRender";
+import {blockRender} from "../../protyle/render/blockRender";
+import {disabledForeverProtyle, setReadonlyByConfig} from "../../protyle/util/onGet";
+import {setStorageVal} from "../../protyle/util/compatibility";
 import {showMessage} from "../../dialog/message";
 import {hideElements} from "../../protyle/ui/hideElements";
 import {getCurrentEditor} from "../editor";
@@ -35,14 +44,17 @@ export const goBack = () => {
         return;
     } else if (window.siyuan.mobile.agentChatController?.handleBack()) {
         return;
-    } else if (document.getElementById("model").style.transform === "translateX(0px)") {
+    } else if (["translateX(0px)", "translateY(0px)"].includes(document.getElementById("model").style.transform)) {
+        const modelElement = document.getElementById("model");
+        if (!modelElement.dispatchEvent(new CustomEvent("siyuan-model-back", {cancelable: true}))) {
+            return;
+        }
         const searchAssetsPanelElement = document.getElementById("searchAssetsPanel");
         if (!searchAssetsPanelElement || searchAssetsPanelElement.classList.contains("fn__none")) {
             if (backModel()) {
                 return;
             }
-            destroyModel();
-            document.getElementById("model").style.transform = "";
+            closeModel();
         } else {
             searchAssetsPanelElement.classList.add("fn__none");
         }

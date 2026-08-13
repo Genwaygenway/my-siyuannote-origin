@@ -34,6 +34,8 @@
             <svg data-type="sidebar-bookmark-tab" class="toolbar__icon"><use xlink:href="#iconBookmark"></use></svg>
             <svg data-type="sidebar-tag-tab" class="toolbar__icon"><use xlink:href="#iconTag"></use></svg>
             <svg data-type="sidebar-inbox-tab" class="toolbar__icon"><use xlink:href="#iconInbox"></use></svg>
+            <svg data-type="sidebar-custom-tab" class="toolbar__icon"><use xlink:href="#iconLayoutGrid"></use></svg>
+            <svg data-menu="true" data-type="sidebar-plugin-tab" class="toolbar__icon fn__none"><use xlink:href="#iconPlugin"></use></svg>
         </div>
         <svg class="toolbar__icon"><use xlink:href="#iconRight"></use></svg>
     </div>
@@ -60,6 +62,8 @@
         <div class="fn__flex-column" data-type="sidebar-outline"></div>
         <div class="fn__flex-column fn__none" data-type="sidebar-backlink"></div>
         <div class="fn__flex-column fn__none" data-type="sidebar-agent"></div>
+        <div class="fn__flex-column fn__none" data-type="sidebar-custom"></div>
+        <div class="fn__flex-column fn__none" data-type="sidebar-plugin"></div>
     </div>
 </div>
 <div id="menu" class="b3-menu b3-menu--fullscreen"></div>

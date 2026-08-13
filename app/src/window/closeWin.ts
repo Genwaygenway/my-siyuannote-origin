@@ -1,9 +1,19 @@
 import type {App} from "../index";
 import {Constants} from "../constants";
 import {ipcRenderer} from "electron";
-import {destroyWindowPluginKernels} from "./closeWinCore";
 import {flushWindowWorkspace} from "./workspace";
 import {showMessage} from "../dialog/message";
+
+export const unloadPlugins = async (app: App) => {
+    for (const plugin of app.plugins) {
+        try {
+            await plugin.onunload();
+        } catch (error) {
+            console.error(error);
+        }
+        await plugin.kernel.destroy();
+    }
+};
 
 let closing = false;
 export const closeWindow = async (app: App) => {
@@ -16,7 +26,7 @@ export const closeWindow = async (app: App) => {
             showMessage(window.siyuan.languages.windowWorkspaceSaveError, 6000, "error");
             return;
         }
-        destroyWindowPluginKernels(app.plugins, error => console.error(error));
+        await unloadPlugins(app);
         ipcRenderer.send(Constants.SIYUAN_CMD, "destroy");
     } catch (error) {
         console.error(error);

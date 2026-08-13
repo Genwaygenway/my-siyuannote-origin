@@ -40,6 +40,9 @@
 @use "business/ai_agent" as *;
 @use "business/ai_editor" as *;
 @use "business/onboarding" as *;
+@use "business/codex_chat" as *;
+@use "business/knowledge" as *;
+@use "business/todo" as *;
 @use "component/svg" as *;
 @use "main/main" as *;
 @use "util/responsive" as *; // 需放置最后，否则 https://github.com/siyuan-note/siyuan/issues/7056

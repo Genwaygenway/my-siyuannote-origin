@@ -10,6 +10,9 @@ import {Files} from "./dock/Files";
 import {Outline} from "./dock/Outline";
 import {Bookmark} from "./dock/Bookmark";
 import {Tag} from "./dock/Tag";
+import {Todo} from "./dock/Todo";
+import {Knowledge} from "./dock/Knowledge";
+import {Calendar} from "./dock/Calendar";
 import {getAllEditor, getAllModels, getAllTabs, getAllWnds} from "./getAll";
 import {Asset} from "../asset";
 import {Search} from "../search";
@@ -110,6 +113,21 @@ export const getWndByLayout: (layout: Layout) => Wnd = (layout: Layout) => {
             return -1;
         }
     })[0];
+};
+
+export const switchToRecentDocumentTab = (preferredWnd?: Wnd, isSaveLayout = true) => {
+    const findRecentTab = (tabs: Tab[], wnd?: Wnd) => tabs
+        .filter(item => item.headElement && (!wnd || item.parent === wnd))
+        .sort((a, b) => Number(b.headElement.getAttribute("data-activetime") || 0) -
+            Number(a.headElement.getAttribute("data-activetime") || 0))[0];
+    const documentTabs = getAllTabs("Editor");
+    const tab = findRecentTab(documentTabs, preferredWnd) || findRecentTab(documentTabs);
+    if (!tab) {
+        return;
+    }
+    tab.parent.switchTab(tab.headElement, false, true, true, isSaveLayout);
+    tab.parent.showHeading();
+    return tab.headElement;
 };
 
 const dockToJSON = (dock: Dock) => {
@@ -301,9 +319,8 @@ export const getAllLayout = () => {
 
 const DOCK_KEYS = ["left", "right", "bottom"] as const;
 
-// agentChat 停靠按钮：已存在则去重，不存在则按默认布局补全
-const ensureAgentChatDock = (layout: Pick<Config.IUiLayout, "left" | "right" | "bottom">) => {
-    let hasAgentChat = false;
+const ensureInternalDock = (layout: Pick<Config.IUiLayout, "left" | "right" | "bottom">, type: TDock) => {
+    let hasDock = false;
     for (const key of DOCK_KEYS) {
         const sections = layout[key]?.data;
         if (!sections) {
@@ -314,60 +331,83 @@ const ensureAgentChatDock = (layout: Pick<Config.IUiLayout, "left" | "right" | "
                 continue;
             }
             for (let i = 0; i < sub.length; i++) {
-                if (sub[i]?.type !== "agentChat") {
+                if (sub[i]?.type !== type) {
                     continue;
                 }
-                if (hasAgentChat) {
+                if (hasDock) {
                     sub.splice(i, 1);
                     i--;
                 } else {
-                    hasAgentChat = true;
+                    if (type === "todo" && (sub[i].size?.width || 0) < 780) {
+                        sub[i].size = {
+                            ...sub[i].size,
+                            width: 780,
+                        };
+                    }
+                    hasDock = true;
                 }
             }
         }
     }
-    if (!hasAgentChat) {
-        for (const key of DOCK_KEYS) {
-            const sections = Constants.SIYUAN_EMPTY_LAYOUT[key]?.data;
-            if (!sections) {
+    if (hasDock) {
+        return;
+    }
+    for (const key of DOCK_KEYS) {
+        const sections = Constants.SIYUAN_EMPTY_LAYOUT[key]?.data;
+        if (!sections) {
+            continue;
+        }
+        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+            const sub = sections[sectionIndex];
+            if (!sub) {
                 continue;
             }
-            for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-                const sub = sections[sectionIndex];
-                if (!sub) {
-                    continue;
-                }
-                for (let itemIndex = 0; itemIndex < sub.length; itemIndex++) {
-                    const item = sub[itemIndex];
-                    if (item?.type === "agentChat") {
-                        const targetSections = layout[key]?.data;
-                        if (targetSections?.[sectionIndex]) {
-                            targetSections[sectionIndex].splice(itemIndex, 0, {...item});
-                        }
-                        return;
+            for (let itemIndex = 0; itemIndex < sub.length; itemIndex++) {
+                const item = sub[itemIndex];
+                if (item?.type === type) {
+                    const targetSections = layout[key]?.data;
+                    if (targetSections?.[sectionIndex]) {
+                        targetSections[sectionIndex].splice(itemIndex, 0, {...item});
                     }
+                    return;
                 }
             }
         }
     }
 };
 
+// agentChat 停靠按钮：已存在则去重，不存在则按默认布局补全
+const ensureAgentChatDock = (layout: Pick<Config.IUiLayout, "left" | "right" | "bottom">) => {
+    ensureInternalDock(layout, "agentChat");
+};
+
 const initInternalDock = (dockItem: Config.IUILayoutDockTab[]) => {
     for (let index = dockItem.length - 1; index >= 0; index--) {
         const existSubItem = dockItem[index];
-        if ((window.siyuan.isPublish && (existSubItem.type === "inbox" || existSubItem.type === "agentChat")) ||
-            (isDisabledFeature("ai") && existSubItem.type === "agentChat")) {
+        if ((window.siyuan.isPublish && (existSubItem.type === "inbox" || existSubItem.type === "agentChat" || existSubItem.type === "codexChat")) ||
+            (isDisabledFeature("ai") && existSubItem.type === "agentChat" || existSubItem.type === "codexChat")) {
             dockItem.splice(index, 1);
             continue;
         }
+        // 日历固定不在 Dock 面板显示，点击图标时通过 toggleModel 拦截转到中心区
+        if (existSubItem.type === "calendar") {
+            existSubItem.show = false;
+        }
         if (existSubItem.hotkeyLangId) {
-            existSubItem.title = window.siyuan.languages[existSubItem.hotkeyLangId];
+            const title = window.siyuan.languages[existSubItem.hotkeyLangId];
+            existSubItem.title = title || (existSubItem.title && existSubItem.title !== "undefined" ? existSubItem.title : existSubItem.hotkeyLangId);
+            const km = window.siyuan.config.keymap.general[existSubItem.hotkeyLangId];
+            existSubItem.hotkey = km ? km.custom : "";
         }
     }
 };
 
 const JSONToDock = (json: any, app: App) => {
     ensureAgentChatDock(json);
+    ensureInternalDock(json, "codexChat");
+    ensureInternalDock(json, "knowledge");
+    ensureInternalDock(json, "todo");
+    ensureInternalDock(json, "calendar");
     json.left.data.forEach((existItem: Config.IUILayoutDockTab[]) => {
         initInternalDock(existItem);
     });
@@ -433,7 +473,7 @@ export const JSONToCenter = (
         } else {
             let title = json.title;
             if (json.lang) {
-                title = window.siyuan.languages[json.lang];
+                title = window.siyuan.languages[json.lang] || title;
             }
             child = new Tab({
                 icon: json.icon,
@@ -519,6 +559,12 @@ export const JSONToCenter = (
         }));
     } else if (json.instance === "Tag") {
         (layout as Tab).addModel(new Tag(app, (layout as Tab)));
+    } else if (json.instance === "Todo") {
+        (layout as Tab).addModel(new Todo(app, (layout as Tab), {center: true}));
+    } else if (json.instance === "Knowledge") {
+        (layout as Tab).addModel(new Knowledge(app, (layout as Tab)));
+    } else if (json.instance === "Calendar") {
+        (layout as Tab).addModel(new Calendar(app, (layout as Tab), {center: true}));
     } else if (json.instance === "Search") {
         if (isSensitiveLayoutData(json)) {
             (layout as Tab).headElement.removeAttribute("data-init-active");
@@ -659,6 +705,13 @@ export const JSONToLayout = (app: App, isStart: boolean) => {
             tab.parent.switchTab(item, false, false, true, false);
             tab.parent.showHeading();
         });
+        let activeTab = latestTabHeaderElement ? getInstanceById(latestTabHeaderElement.getAttribute("data-id")) as Tab : undefined;
+        if (!activeTab) {
+            activeTab = getAllTabs().find(item => item.headElement?.classList.contains("item--focus") && item.model instanceof Todo);
+        }
+        if (activeTab?.model instanceof Todo) {
+            latestTabHeaderElement = switchToRecentDocumentTab(activeTab.parent, false) || latestTabHeaderElement;
+        }
         if (latestTabHeaderElement) {
             setPanelFocus(latestTabHeaderElement.parentElement.parentElement.parentElement, false);
         }
@@ -731,7 +784,9 @@ export const layoutToJSON = (layout: Layout | Wnd | Tab | Model, json: any, brea
             json.icon = layout.icon;
             json.docIcon = layout.docIcon;
             json.pin = layout.headElement.classList.contains("item--pin");
-            if (layout.model instanceof Files) {
+            if (layout.model instanceof Knowledge) {
+                json.lang = "knowledge";
+            } else if (layout.model instanceof Files) {
                 json.lang = "fileTree";
             } else if (layout.model instanceof Backlink && layout.model.type === "pin") {
                 json.lang = "backlinks";
@@ -743,6 +798,10 @@ export const layoutToJSON = (layout: Layout | Wnd | Tab | Model, json: any, brea
                 json.lang = "outline";
             } else if (layout.model instanceof Tag) {
                 json.lang = "tag";
+            } else if (layout.model instanceof Todo) {
+                json.lang = "todo";
+            } else if (layout.model instanceof Calendar) {
+                json.lang = "calendarTitle";
             }
             if (layout.headElement.classList.contains("item--focus")) {
                 json.active = true;
@@ -782,6 +841,8 @@ export const layoutToJSON = (layout: Layout | Wnd | Tab | Model, json: any, brea
         json.instance = "Backlink";
     } else if (layout instanceof Bookmark) {
         json.instance = "Bookmark";
+    } else if (layout instanceof Knowledge) {
+        json.instance = "Knowledge";
     } else if (layout instanceof Files) {
         json.instance = "Files";
     } else if (layout instanceof Graph) {
@@ -798,6 +859,10 @@ export const layoutToJSON = (layout: Layout | Wnd | Tab | Model, json: any, brea
         json.instance = "Outline";
     } else if (layout instanceof Tag) {
         json.instance = "Tag";
+    } else if (layout instanceof Todo) {
+        json.instance = "Todo";
+    } else if (layout instanceof Calendar) {
+        json.instance = "Calendar";
     } else if (layout instanceof Search) {
         json.instance = "Search";
         json.config = layout.config;

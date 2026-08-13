@@ -209,6 +209,9 @@ export abstract class Constants {
     public static readonly LOCAL_RECENT_DOCS = "local-recent-docs";
     public static readonly LOCAL_CLOSED_TABS = "local-closed-tabs";
     public static readonly LOCAL_AV_CALENDAR_MODES = "local-av-calendar-modes";
+    public static readonly LOCAL_TODO = "local-todo";
+    public static readonly LOCAL_KNOWLEDGE = "local-knowledge";
+    public static readonly LOCAL_CODEX_CHAT = "local-codex-chat";
 
     // dialog
     public static readonly DIALOG_CONFIRM = "dialog-confirm";
@@ -777,17 +780,35 @@ export abstract class Constants {
                     icon: "iconFiles",
                     hotkeyLangId: "fileTree",
                 }, {
+                    type: "knowledge",
+                    size: {width: 232, height: 0},
+                    show: false,
+                    icon: "iconFilesRoot",
+                    hotkeyLangId: "knowledge",
+                }, {
                     type: "outline",
                     size: {width: 232, height: 0},
                     show: false,
                     icon: "iconOutline",
                     hotkeyLangId: "outline",
                 }, {
+                    type: "todo",
+                    size: {width: 780, height: 0},
+                    show: false,
+                    icon: "iconCheck",
+                    hotkeyLangId: "todo",
+                }, {
                     type: "inbox",
                     size: {width: 320, height: 0},
                     show: false,
                     icon: "iconInbox",
                     hotkeyLangId: "inbox",
+                }, {
+                    type: "calendar",
+                    size: {width: 320, height: 0},
+                    show: false,
+                    icon: "iconCalendar",
+                    hotkeyLangId: "calendarTitle",
                 }], [{
                     type: "bookmark",
                     size: {width: 232, height: 0},
@@ -807,6 +828,12 @@ export abstract class Constants {
             pin: true,
             data: [
                 [{
+                    type: "codexChat",
+                    size: {width: 420, height: 0},
+                    show: false,
+                    icon: "iconTerminal",
+                    title: "Codex",
+                }, {
                     type: "agentChat",
                     size: {width: 320, height: 0},
                     show: false,

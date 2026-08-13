@@ -44,6 +44,7 @@ import {emitToPlugins} from "../plugin/EventBusCore";
 import {initializeEnglishCommandTranslations} from "../command/english";
 import {loadLanguages} from "../boot/loadLanguages";
 import {installPluginStorageFetchAppId} from "../util/fetchAppId";
+import {applySharedStorageVal} from "../util/sharedStorage";
 
 class App {
     public plugins: import("../plugin").Plugin[] = [];
@@ -122,12 +123,14 @@ class App {
                                 if (window.siyuan.storage) {
                                     window.siyuan.storage[data.data.key] = data.data.val;
                                     onWindowWorkspaceStorageChanged(data.data.key);
+                                    applySharedStorageVal(data.data.key, data.data.val);
                                 }
                                 break;
                             case "setLocalStorageVals":
                                 Object.keys(data.data.keyVals).forEach((k) => {
                                     window.siyuan.storage[k] = data.data.keyVals[k];
                                     onWindowWorkspaceStorageChanged(k);
+                                    applySharedStorageVal(k, data.data.keyVals[k]);
                                 });
                                 break;
                             case "removeLocalStorageVal":

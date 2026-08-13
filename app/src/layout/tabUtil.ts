@@ -27,6 +27,7 @@ import {isWindow} from "../util/functions";
 import {Wnd} from "./Wnd";
 import {requestResponsiveDockLayout} from "./dock/responsive";
 import {cloneSearchConfig} from "../search/config";
+import {Knowledge} from "./dock/Knowledge";
 
 export const setTabPosition = (onlyPadding = false, onlyClear = false) => {
     const isWindowMode = isWindow();
@@ -390,6 +391,8 @@ export const copyTab = (app: App, tab: Tab) => {
                     notebookId: tab.model.notebookId,
                     type: tab.model.type,
                 });
+            } else if (tab.model instanceof Knowledge) {
+                model = new Knowledge(app, newTab);
             } else if (tab.model instanceof Files) {
                 model = new Files({
                     app,

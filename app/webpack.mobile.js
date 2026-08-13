@@ -39,6 +39,11 @@ module.exports = (env, argv) => {
         module: {
             rules: [
                 {
+                    // chinese-days 的 module 产物为 ESM 但包未声明 type: module，需显式标记让 webpack 自动检测模块类型
+                    test: /node_modules[\\/]chinese-days[\\/]dist[\\/]index\.es\.js$/,
+                    type: "javascript/auto",
+                },
+                {
                     test: /\.tpl/,
                     include: [
                         path.resolve(__dirname, "src/assets/template/mobile/index.tpl")],

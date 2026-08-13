@@ -479,5 +479,13 @@
       color: var(--b3-theme-on-primary);
       background-color: var(--b3-theme-primary);
     }
+
+    &[data-type="knowledge"] svg {
+      width: 16px;
+      height: 16px;
+      color: currentColor;
+      fill: none;
+      background: transparent;
+    }
   }
 }

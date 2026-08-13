@@ -22,6 +22,7 @@ import {syncGuide} from "../../sync/syncGuide";
 import {Inbox} from "../../layout/dock/Inbox";
 import type {App} from "../../index";
 import {checkFold} from "../../util/noRelyPCFunction";
+import {MobileCustomFeatures} from "../dock/MobileCustomFeatures";
 import {setTitle} from "../../util/processTitle";
 import {activateQueuedAVLocate, queueAVLocateRequest} from "../../protyle/render/av/locate";
 import {MobileTabs} from "../tabs/MobileTabs";
@@ -49,6 +50,7 @@ import {
 import {exitSiYuan} from "../../dialog/processSystem";
 import {enterDocumentFromTitle} from "../../protyle/header/titleEnter";
 
+let customFeatures: MobileCustomFeatures;
 // 侧栏首次使用前随布局选择默认功能，使用后保留当前页签。
 const activatedSidePanels = new WeakSet<HTMLElement>();
 
@@ -277,6 +279,12 @@ const initSidePanelTabs = (app: App, sidePanelElement: HTMLElement) => {
         const tabType = svgElement.getAttribute("data-type");
         if (!tabType) {
             closePanel();
+            return;
+        }
+        if (tabType === "sidebar-custom-tab") {
+            closePanel();
+            customFeatures ||= new MobileCustomFeatures(app);
+            customFeatures.openHub();
             return;
         }
         const type = getDockIdFromTabElement(svgElement);

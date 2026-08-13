@@ -2,8 +2,6 @@ import {Constants} from "../constants";
 import {fetchPost} from "../util/fetch";
 /// #if !MOBILE
 import {exportLayout} from "../layout/util";
-import {getDockByType} from "../layout/tabUtil";
-import {Files} from "../layout/dock/Files";
 /// #endif
 import {getAllEditor, getAllModels} from "../layout/getAll";
 /// #if !BROWSER
@@ -114,7 +112,10 @@ export const setDefRefCount = (data: {
     /// #if MOBILE
     liElement = window.siyuan.mobile.docks.file.element.querySelector(`li[data-node-id="${data.rootID}"]`);
     /// #else
-    liElement = (getDockByType("file")?.data["file"] as Files)?.element.querySelector(`li[data-node-id="${data.rootID}"]`);
+    getAllModels().files.find((files) => {
+        liElement = files.element.querySelector(`li[data-node-id="${data.rootID}"]`);
+        return Boolean(liElement);
+    });
     /// #endif
     if (liElement) {
         const counterElement = liElement.querySelector(".counter");

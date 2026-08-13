@@ -122,7 +122,7 @@ export const importNotebook = (file: File) => {
     fetchPost("/api/import/importSYNotebook", formData);
 };
 
-export const newNotebook = () => {
+export const newNotebook = (onCreated?: (notebook: INotebook) => void) => {
     let nativeImportHTML = "";
     /// #if !BROWSER
     if (getHostCapabilities().localFileSystem) {
@@ -168,6 +168,10 @@ export const newNotebook = () => {
         name = replaceFileName(name);
         fetchPost("/api/notebook/createNotebook", {
             name
+        }, response => {
+            if (response.code === 0 && response.data?.notebook) {
+                onCreated?.(response.data.notebook);
+            }
         });
         dialog.destroy();
     });
