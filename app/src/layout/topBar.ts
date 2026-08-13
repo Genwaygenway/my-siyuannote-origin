@@ -25,6 +25,7 @@ import {setTabPosition} from "./tabUtil";
 import {commandPanel} from "../boot/globalEvent/command/panel";
 import {openTopBarMenu} from "../plugin/openTopBarMenu";
 import {getWorkspaceName} from "../util/processTitle";
+import {toggleLeftDock} from "./dock/util";
 
 const sendTrafficLightPosition = (zoom: number) => {
     /// #if !BROWSER
@@ -64,6 +65,9 @@ export const updateBarModeIcon = () => {
 export const initBar = (app: App) => {
     const toolbarElement = document.getElementById("toolbar");
     toolbarElement.innerHTML = `
+<div id="barToggleLeftDock" class="toolbar__item ariaLabel" aria-label="${window.siyuan.languages.toggleLeftDock}">
+    <svg><use xlink:href="#iconPanelLeft"></use></svg>
+</div>
 <div id="barWorkspace" class="ariaLabel toolbar__item" aria-label="${window.siyuan.languages.mainMenu} ${updateHotkeyTip(window.siyuan.config.keymap.general.mainMenu.custom)}">
     <span class="toolbar__text">${getWorkspaceName()}</span>
     <svg class="toolbar__svg"><use xlink:href="#iconDown"></use></svg>
@@ -109,7 +113,11 @@ export const initBar = (app: App) => {
         }
         while (!target.classList.contains("toolbar")) {
             const targetId = typeof event.detail === "string" ? event.detail : target.id;
-            if (targetId === "barBack") {
+            if (targetId === "barToggleLeftDock") {
+                toggleLeftDock(target.querySelector("use"));
+                event.stopPropagation();
+                break;
+            } else if (targetId === "barBack") {
                 goBack(app);
                 event.stopPropagation();
                 break;
@@ -177,20 +185,50 @@ export const initBar = (app: App) => {
                 }
                 window.siyuan.menus.menu.remove();
                 window.siyuan.menus.menu.element.setAttribute("data-name", Constants.MENU_BAR_MODE);
+                const lightSubmenus: IMenu[] = window.siyuan.config.appearance.lightThemes.filter((theme) => !theme.name.startsWith("genway")).map((theme) => {
+                    return {
+                        label: theme.label,
+                        current: window.siyuan.config.appearance.mode === 0 && !window.siyuan.config.appearance.modeOS && window.siyuan.config.appearance.themeLight === theme.name,
+                        click: () => {
+                            fetchPost("/api/setting/setAppearance", {
+                                ...window.siyuan.config.appearance,
+                                mode: 0,
+                                modeOS: false,
+                                themeLight: theme.name,
+                            });
+                        }
+                    };
+                });
                 window.siyuan.menus.menu.append(new MenuItem({
                     id: "themeLight",
                     label: window.siyuan.languages.themeLight,
                     icon: "iconLight",
                     current: window.siyuan.config.appearance.mode === 0 && !window.siyuan.config.appearance.modeOS,
+                    submenu: lightSubmenus,
                     click: () => {
                         setMode(0);
                     }
                 }).element);
+                const darkSubmenus: IMenu[] = window.siyuan.config.appearance.darkThemes.filter((theme) => !theme.name.startsWith("genway")).map((theme) => {
+                    return {
+                        label: theme.label,
+                        current: window.siyuan.config.appearance.mode === 1 && !window.siyuan.config.appearance.modeOS && window.siyuan.config.appearance.themeDark === theme.name,
+                        click: () => {
+                            fetchPost("/api/setting/setAppearance", {
+                                ...window.siyuan.config.appearance,
+                                mode: 1,
+                                modeOS: false,
+                                themeDark: theme.name,
+                            });
+                        }
+                    };
+                });
                 window.siyuan.menus.menu.append(new MenuItem({
                     id: "themeDark",
                     label: window.siyuan.languages.themeDark,
                     current: window.siyuan.config.appearance.mode === 1 && !window.siyuan.config.appearance.modeOS,
                     icon: "iconDark",
+                    submenu: darkSubmenus,
                     click: () => {
                         setMode(1);
                     }

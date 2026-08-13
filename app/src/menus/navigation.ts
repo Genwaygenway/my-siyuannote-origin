@@ -18,8 +18,6 @@ import {Constants} from "../constants";
 import {newFileInTree} from "../util/newFile";
 import {hasClosestByTag, hasTopClosestByTag} from "../protyle/util/hasClosest";
 import {deleteFiles} from "../editor/deleteFile";
-import {getDockByType} from "../layout/tabUtil";
-import {Files} from "../layout/dock/Files";
 import {openCardByData} from "../card/openCard";
 import {viewCards} from "../card/viewCards";
 import {App} from "../index";
@@ -31,6 +29,7 @@ import {emitOpenMenu} from "../plugin/EventBus";
 import {saveExportFile} from "../protyle/util/compatibility";
 import {exportMarkdownZip} from "../protyle/export/exportMd";
 import {addFilesToDatabase} from "../protyle/render/av/addToDatabase";
+import {getFileTreeByElement, getFileTreeByNotebook} from "../layout/dock/util";
 
 const initMultiMenu = (selectItemElements: NodeListOf<Element>, app: App) => {
     window.siyuan.menus.menu.element.setAttribute("data-from", Constants.MENU_FROM_DOC_TREE_MORE_ITEMS);
@@ -238,7 +237,7 @@ export const initNavigationMenu = (app: App, liElement: HTMLElement) => {
                 /// #if MOBILE
                 files = window.siyuan.mobile.docks.file;
                 /// #else
-                files = (getDockByType("file").data["file"] as Files);
+                files = getFileTreeByElement(liElement);
                 /// #endif
                 const toggleElement = liElement.querySelector(".b3-list-item__arrow--open");
                 if (toggleElement) {
@@ -695,11 +694,14 @@ export const genImportMenu = (notebookId: string, pathString: string) => {
         let files;
         /// #if MOBILE
         files = window.siyuan.mobile.docks.file;
-        /// #else
-        files = (getDockByType("file").data["file"] as Files);
+                /// #else
+        files = getFileTreeByNotebook(notebookId);
         /// #endif
-        const liElement = files.element.querySelector(`[data-path="${pathString}"]`);
-        liElement.querySelector(".b3-list-item__toggle").classList.remove("fn__hidden");
+        const liElement = files?.element.querySelector(`[data-path="${pathString}"]`);
+        if (!liElement) {
+            return;
+        }
+        liElement.querySelector(".b3-list-item__toggle")?.classList.remove("fn__hidden");
         files.getLeaf(liElement, notebookId, true);
         window.siyuan.menus.menu.remove();
     };

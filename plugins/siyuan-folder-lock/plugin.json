@@ -1,0 +1,35 @@
+{
+  "name": "siyuan-folder-lock",
+  "author": "Genwaygenway",
+  "url": "https://github.com/Genwaygenway/siyuan-folder-lock",
+  "version": "0.3.0",
+  "minAppVersion": "3.7.1",
+  "displayName": {
+    "default": "Security Lock",
+    "zh-CN": "安全锁"
+  },
+  "description": {
+    "default": "Password-protect a document tree with encrypted recovery data",
+    "zh-CN": "使用密码保护文档树，并保留加密恢复数据"
+  },
+  "readme": {
+    "default": "README.md",
+    "zh-CN": "README.zh-CN.md"
+  },
+  "backends": [
+    "all"
+  ],
+  "frontends": [
+    "desktop",
+    "desktop-window",
+    "browser-desktop"
+  ],
+  "keywords": [
+    "security lock",
+    "document encryption",
+    "recovery code",
+    "安全锁",
+    "文档加密",
+    "恢复码"
+  ]
+}

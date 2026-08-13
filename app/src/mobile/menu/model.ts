@@ -5,6 +5,9 @@ export const openModel = (obj: {
     bindEvent: (element: HTMLElement) => void
 }) => {
     const modelElement = document.getElementById("model");
+    modelElement.dispatchEvent(new CustomEvent("siyuan-model-hide"));
+    modelElement.classList.remove("mobile-workspace");
+    document.getElementById("modelMain").classList.remove("fn__flex-column", "mobile-workspace__main");
     modelElement.style.transform = "translateY(0px)";
     modelElement.style.zIndex = (++window.siyuan.zIndex).toString();
     const iconElement  = modelElement.querySelector(".toolbar__icon");

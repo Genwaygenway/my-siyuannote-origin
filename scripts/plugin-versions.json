@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "storeIndex": "https://raw.githubusercontent.com/siyuan-note/bazaar/main/stage/plugins.json",
+  "plugins": [
+    {
+      "name": "siyuan-calendar-plus",
+      "root": "../siyuan-calendar-plus",
+      "packageManager": "pnpm",
+      "storeVersion": "1.0.1"
+    },
+    {
+      "name": "siyuan-todo-plus",
+      "root": "../siyuan-todo-plus",
+      "packageManager": "pnpm",
+      "storeVersion": "1.0.0"
+    },
+    {
+      "name": "siyuan-folder-lock",
+      "root": "plugins/siyuan-folder-lock",
+      "packageManager": "npm",
+      "storeVersion": "0.1.2"
+    }
+  ]
+}

@@ -102,7 +102,7 @@ export const mountHelp = () => {
     });
 };
 
-export const newNotebook = () => {
+export const newNotebook = (onCreated?: (notebook: INotebook) => void) => {
     const dialog = new Dialog({
         title: window.siyuan.languages.newNotebook,
         content: `<div class="b3-dialog__content">
@@ -130,6 +130,10 @@ export const newNotebook = () => {
         name = replaceFileName(name);
         fetchPost("/api/notebook/createNotebook", {
             name
+        }, response => {
+            if (response.code === 0 && response.data?.notebook) {
+                onCreated?.(response.data.notebook);
+            }
         });
         dialog.destroy();
     });

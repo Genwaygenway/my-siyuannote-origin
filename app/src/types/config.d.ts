@@ -1927,8 +1927,11 @@ declare namespace Config {
         | IUILayoutTabBookmark
         | IUILayoutTabFiles
         | IUILayoutTabGraph
+        | IUILayoutTabKnowledge
         | IUILayoutTabOutline
         | IUILayoutTabTag
+        | IUILayoutTabTodo
+        | IUILayoutTabCalendar
         | IUILayoutTabSearch;
 
     /**
@@ -2008,7 +2011,8 @@ declare namespace Config {
         /**
          * Tab content
          */
-        children: (IUILayoutTabAsset | IUILayoutTabBacklink | IUILayoutTabCustom | IUILayoutTabEditor)[];
+        children: (IUILayoutTabAsset | IUILayoutTabBacklink | IUILayoutTabCustom | IUILayoutTabEditor |
+            IUILayoutTabKnowledge | IUILayoutTabTodo | IUILayoutTabCalendar)[];
         /**
          * Tab icon
          */
@@ -2236,6 +2240,36 @@ declare namespace Config {
          * Object name
          */
         instance: "Tag";
+    }
+
+    /**
+     * SiYuan knowledge base tab
+     */
+    export interface IUILayoutTabKnowledge {
+        /**
+         * Object name
+         */
+        instance: "Knowledge";
+    }
+
+    /**
+     * SiYuan to-do tab
+     */
+    export interface IUILayoutTabTodo {
+        /**
+         * Object name
+         */
+        instance: "Todo";
+    }
+
+    /**
+     * SiYuan calendar tab
+     */
+    export interface IUILayoutTabCalendar {
+        /**
+         * Object name
+         */
+        instance: "Calendar";
     }
 
     /**

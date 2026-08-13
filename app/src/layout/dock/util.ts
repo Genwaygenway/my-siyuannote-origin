@@ -13,6 +13,12 @@ import {Editor} from "../../editor";
 import {Constants} from "../../constants";
 import {getDocDisplayName} from "../../util/pathName";
 
+export const getFileTreeByNotebook = (notebookId: string) =>
+    getAllModels().files.find(item => item.containsNotebook(notebookId));
+
+export const getFileTreeByElement = (element: Element) =>
+    getAllModels().files.find(item => item.element.contains(element));
+
 export const openBacklink = async (options: {
     app: App,
     blockId: string,
@@ -204,6 +210,43 @@ export const toggleDockBar = (useElement: Element) => {
     setTabPosition();
 };
 
+export const hideActiveDockPanels = (isSaveLayout = true) => {
+    [
+        window.siyuan.layout.leftDock,
+        window.siyuan.layout.rightDock,
+        window.siyuan.layout.bottomDock,
+    ].forEach(dock => {
+        dock?.elements.forEach(element => {
+            Array.from(element.querySelectorAll<HTMLElement>(".dock__item--active")).forEach(item => {
+                const type = item.dataset.type;
+                if (type) {
+                    dock.toggleModel(type, false, true, false, isSaveLayout);
+                }
+            });
+        });
+    });
+};
+
+export const toggleLeftDock = (useElement: Element) => {
+    const leftDock = window.siyuan.layout.leftDock;
+    if (!leftDock) {
+        return;
+    }
+    const layoutElement = leftDock.layout.element;
+    const isHidden = layoutElement.classList.contains("fn__none");
+    if (isHidden) {
+        layoutElement.classList.remove("fn__none");
+        useElement.setAttribute("xlink:href", "#iconPanelLeft");
+    } else {
+        layoutElement.classList.add("fn__none");
+        useElement.setAttribute("xlink:href", "#iconPanelLeftDashed");
+    }
+    resizeTabs();
+    resetFloatDockSize();
+    adjustDockPadding();
+    setTabPosition();
+};
+
 export const clearOBG = () => {
     const models = getAllModels();
     models.outline.find(item => {
@@ -243,23 +286,26 @@ export const clearOBG = () => {
 };
 
 export const selectOpenTab = async () => {
-    const dockFile = getDockByType("file");
-    if (!dockFile) {
-        return false;
-    }
-    const files = dockFile.data.file as Files;
     const element = document.querySelector(".layout__wnd--active > .fn__flex > .layout-tab-bar > .item--focus") ||
         document.querySelector("ul.layout-tab-bar > .item--focus");
+    let files: Files;
     if (element) {
         const tab = getInstanceById(element.getAttribute("data-id")) as Tab;
         if (tab && tab.model instanceof Editor) {
+            files = getFileTreeByNotebook(tab.model.editor.protyle.notebookId);
             tab.model.editor.protyle.wysiwyg.element.blur();
             tab.model.editor.protyle.title.editElement.blur();
-            await files.selectItem(tab.model.editor.protyle.notebookId, tab.model.editor.protyle.path);
-            files.lastSelectedElement = files.element.querySelector(".b3-list-item--focus");
+            if (files) {
+                await files.selectItem(tab.model.editor.protyle.notebookId, tab.model.editor.protyle.path);
+                files.lastSelectedElement = files.element.querySelector(".b3-list-item--focus");
+            }
         }
     }
-    dockFile.toggleModel("file", true);
+    files = files || getAllModels().files.find(item => item.dockType === "file");
+    if (!files) {
+        return false;
+    }
+    getDockByType(files.dockType)?.toggleModel(files.dockType, true);
 };
 
 export const adjustDockPadding = () => {

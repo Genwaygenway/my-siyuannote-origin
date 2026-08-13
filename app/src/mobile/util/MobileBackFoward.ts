@@ -8,7 +8,7 @@ import {highlightRender} from "../../protyle/render/highlightRender";
 import {blockRender} from "../../protyle/render/blockRender";
 import {disabledForeverProtyle, setReadonlyByConfig} from "../../protyle/util/onGet";
 import {setStorageVal} from "../../protyle/util/compatibility";
-import {closePanel} from "./closePanel";
+import {closeModel, closePanel} from "./closePanel";
 import {showMessage} from "../../dialog/message";
 import {getCurrentEditor} from "../editor";
 import {avRender} from "../../protyle/render/av/render";
@@ -136,10 +136,18 @@ export const goBack = () => {
         !window.siyuan.menus.menu.element.classList.contains("fn__none")) {
         window.siyuan.menus.menu.element.dispatchEvent(new CustomEvent("click", {detail: "back"}));
         return;
+    } else if (window.siyuan.dialogs.length !== 0) {
+        window.siyuan.dialogs[window.siyuan.dialogs.length - 1].destroy();
+        return;
     } else if (document.getElementById("model").style.transform === "translateY(0px)") {
+        const modelElement = document.getElementById("model");
+        const backEvent = new CustomEvent("siyuan-model-back", {cancelable: true});
+        if (!modelElement.dispatchEvent(backEvent)) {
+            return;
+        }
         const searchAssetsPanelElement = document.getElementById("searchAssetsPanel");
         if (!searchAssetsPanelElement || searchAssetsPanelElement.classList.contains("fn__none")) {
-            document.getElementById("model").style.transform = "";
+            closeModel();
         } else {
             searchAssetsPanelElement.classList.add("fn__none");
         }
@@ -153,10 +161,6 @@ export const goBack = () => {
         return;
     } else if (editor && !editor.protyle.toolbar.subElement.classList.contains("fn__none")) {
         hideElements(["util"], editor.protyle);
-        closePanel();
-        return;
-    } else if (window.siyuan.dialogs.length !== 0) {
-        hideElements(["dialog"]);
         closePanel();
         return;
     }

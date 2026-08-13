@@ -22,7 +22,6 @@ import {Tab} from "../../layout/Tab";
 import {Editor} from "../../editor";
 import {setEditMode} from "../../protyle/util/setEditMode";
 import {rename} from "../../editor/rename";
-import {Files} from "../../layout/dock/Files";
 import {newDailyNote} from "../../util/mount";
 import {hideElements} from "../../protyle/ui/hideElements";
 import {fetchPost} from "../../util/fetch";
@@ -550,12 +549,13 @@ const editKeydown = (app: App, event: KeyboardEvent) => {
 };
 
 const fileTreeKeydown = (app: App, event: KeyboardEvent) => {
-    const dockFile = getDockByType("file");
-    if (!dockFile) {
+    const files = getAllModels().files.find(item => item.element.contains(document.activeElement)) ||
+        getAllModels().files.find(item => item.dockType === "file");
+    if (!files) {
         return false;
     }
-    const files = dockFile.data.file as Files;
-    if (typeof dockFile.data.file === "boolean") {
+    const dockFile = getDockByType(files.dockType);
+    if (!dockFile || typeof dockFile.data[files.dockType] === "boolean") {
         return true;
     }
 

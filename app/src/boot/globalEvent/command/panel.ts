@@ -9,10 +9,9 @@ import {Editor} from "../../../editor";
 import {getCurrentEditor} from "../../../mobile/editor";
 import {popSearch} from "../../../mobile/menu/search";
 /// #else
-import {getActiveTab, getDockByType} from "../../../layout/tabUtil";
+import {getActiveTab} from "../../../layout/tabUtil";
 import {Custom} from "../../../layout/dock/Custom";
 import {getAllModels} from "../../../layout/getAll";
-import {Files} from "../../../layout/dock/Files";
 import {Search} from "../../../search";
 import {openSearch} from "../../../search/spread";
 /// #endif
@@ -287,12 +286,8 @@ export const execByCommand = async (options: {
     }
 
     if (isFileFocus && !fileLiElements) {
-        const dockFile = getDockByType("file");
-        if (!dockFile) {
-            return false;
-        }
-        const files = dockFile.data.file as Files;
-        fileLiElements = Array.from(files.element.querySelectorAll(".b3-list-item--focus"));
+        const files = getAllModels().files.find(item => item.element.contains(document.activeElement));
+        fileLiElements = files ? Array.from(files.element.querySelectorAll(".b3-list-item--focus")) : [];
     }
 
     // 全局命令，在没有 protyle 和文件树没聚焦的情况下执行

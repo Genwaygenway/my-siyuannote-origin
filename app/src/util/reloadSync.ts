@@ -9,6 +9,7 @@ import {getAllModels} from "../layout/getAll";
 import {setStorageVal} from "../protyle/util/compatibility";
 import type {Tab} from "../layout/Tab";
 import {setTitle} from "./processTitle";
+import {hydrateSharedStorage} from "./sharedStorage";
 
 export const reloadSync = (
     app: App,
@@ -19,6 +20,7 @@ export const reloadSync = (
     updateReadonly = true,
     onlyUpdateDoc = false
 ) => {
+    hydrateSharedStorage();
     if (hideMsg) {
         hideMessage();
     }

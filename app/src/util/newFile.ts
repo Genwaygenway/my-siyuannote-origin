@@ -14,6 +14,7 @@ import {hideElements} from "../protyle/ui/hideElements";
 import {openMobileFileById} from "../mobile/editor";
 import {App} from "../index";
 import {NewDocTargetByHPath, NewDocTargetSubDoc, getNewDocTargetFromSavePath, getNewDocTargetFromTree} from "./parseNewDocTarget";
+import {getFileTreeByElement} from "../layout/dock/util";
 
 export const getBlockRefAnchorText = (title: string) => {
     const trimmed = (title || "").trim();
@@ -161,7 +162,10 @@ function getNewFilePath(): Pick<NewDocRequest, "notebookId" | "currentPath" | "h
         hasFocusTarget = true;
     }
     if (!notebookId) {
-        const fileModel = getDockByType("file").data.file;
+        const activeTree = (document.activeElement as HTMLElement)?.closest(".sy__file");
+        const focusedElement = activeTree?.querySelector(".b3-list-item--focus");
+        const fileModel = focusedElement ? getFileTreeByElement(focusedElement) :
+            getDockByType("file").data.file as Files;
         if (fileModel instanceof Files) {
             const currentElement = fileModel.element.querySelector(".b3-list-item--focus");
             if (currentElement) {

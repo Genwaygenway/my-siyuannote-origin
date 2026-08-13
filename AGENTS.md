@@ -112,17 +112,26 @@ Four webpack configs each emit a separate bundle to `app/stage/build/{app,deskto
 
 ## 5. Project-specific rules
 
-1. **i18n:**
+1. **Daily production data backup:**
+   - Before starting the first development work of each local calendar day, determine the active production SiYuan workspace and back up its complete `data/` directory to `<workspace>/.codex-backups/daily-data-YYYYMMDD-HHMMSS/data/`
+   - Flush pending kernel transactions before copying, then verify that the backup matches the source by file count and file-content checksums
+   - Before creating a backup, check for `<workspace>/.codex-backups/daily-data-YYYYMMDD-*`; if one exists, reuse it and do not create another backup that day
+   - Keep the daily backup throughout development. Delete it only after all work is complete, the production bundle and changed runtime resources are installed, SiYuan is reopened successfully, and the production data is verified intact; otherwise retain the backup
+2. **Plugin versioning:**
+   - Every completed local functional change to a managed plugin must increment that plugin's stable source patch version exactly once (for example, `1.0.1` becomes `1.0.2`)
+   - Treat one logical change set as one functional change, regardless of how many files or intermediate edits it contains; documentation-only, test-only, formatting-only, and build-configuration-only changes do not trigger a version increment
+   - Use `node scripts/manage-plugin-versions.mjs set <plugin-name> <next-patch-version>` so `package.json`, `plugin.json`, and `package-lock.json` stay synchronized; do not update the recorded store version until that stable version is actually published online
+3. **i18n:**
    - New keys go at the **top** of each `langs/*.json` object; add to every language file (reference `en.json`)
    - Exception: inside the `_kernel` object, append new entries at the **end** using the next incremental numeric key
    - Each language must be properly translated — do NOT copy the same text across all language files
    - Domains: `ld246.com` only in `zh-CN.json`; use `liuyun.io` in all other languages
    - After modifying i18n files, run `python scripts/check-lang-keys.py` to verify key completeness across all language files
-2. **Windows scripting:** Prefer Node.js / Python; avoid PowerShell unless necessary
-3. **Frontend verification:** Do not use `npx webpack` or `pnpm dev` to verify changes; after changes, run `cd app && pnpm run lint` to check code style
-4. **Frontend build:** Do NOT run `pnpm build` — the developer runs `pnpm dev` manually, and `pnpm build` will conflict with it, producing broken bundles
-5. **Icons:** Do not hand-write SVG; use existing icons from `app/appearance/icons/litheness/icon.js` when possible
-6. **User guide:** When editing the user guide, follow `docs/SY-FORMAT.md`
+4. **Windows scripting:** Prefer Node.js / Python; avoid PowerShell unless necessary
+5. **Frontend verification:** Do not use `npx webpack` or `pnpm dev` to verify changes; after changes, run `cd app && pnpm run lint` to check code style
+6. **Icons:** Do not hand-write SVG; use existing icons from `app/appearance/icons/litheness/icon.js` when possible
+7. **Production installation:** After every functional update, run the required checks, build the production frontend assets, install the built bundle and any changed runtime resources into the local production SiYuan app, reopen the app, and verify the updated interface plus normal app and kernel startup
+8. **User guide:** When editing the user guide, follow `docs/SY-FORMAT.md`
 
 ---
 

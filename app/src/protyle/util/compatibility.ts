@@ -6,6 +6,11 @@ import {ipcRenderer} from "electron";
 /// #endif
 import {getDefaultSubType, getDefaultType} from "../../search/getDefault";
 import {hideMessage, showMessage} from "../../dialog/message";
+import {
+    applySharedStorageVal,
+    hydrateSharedStorage,
+    persistSharedStorageVal,
+} from "../../util/sharedStorage";
 
 export const isPhablet = () => {
     return /Android|webOS|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(navigator.userAgent) || isIPhone() || isIPad();
@@ -466,7 +471,7 @@ export const updateHotkeyTip = (hotkey: string) => {
 };
 
 export const getLocalStorage = (cb: () => void) => {
-    fetchPost("/api/storage/getLocalStorage", undefined, (response) => {
+    fetchPost("/api/storage/getLocalStorage", undefined, async (response) => {
         window.siyuan.storage = response.data;
         // 历史数据迁移
         const defaultStorage: any = {};
@@ -575,7 +580,13 @@ export const getLocalStorage = (cb: () => void) => {
         defaultStorage[Constants.LOCAL_ZOOM] = 1;
         defaultStorage[Constants.LOCAL_MOVE_PATH] = {keys: [], k: ""};
         defaultStorage[Constants.LOCAL_RECENT_DOCS] = {type: "viewedAt"};   // TRecentDocsSort
-
+        defaultStorage[Constants.LOCAL_TODO] = {
+            items: []
+        };
+        defaultStorage[Constants.LOCAL_KNOWLEDGE] = {
+            notebooks: []
+        };
+        defaultStorage[Constants.LOCAL_CODEX_CHAT] = {};
         [Constants.LOCAL_EXPORTIMG, Constants.LOCAL_SEARCHKEYS, Constants.LOCAL_PDFTHEME, Constants.LOCAL_BAZAAR,
             Constants.LOCAL_EXPORTWORD, Constants.LOCAL_EXPORTPDF, Constants.LOCAL_DOCINFO, Constants.LOCAL_FONTSTYLES,
             Constants.LOCAL_SEARCHDATA, Constants.LOCAL_ZOOM, Constants.LOCAL_LAYOUTS, Constants.LOCAL_AI,
@@ -583,7 +594,8 @@ export const getLocalStorage = (cb: () => void) => {
             Constants.LOCAL_DIALOGPOSITION, Constants.LOCAL_SEARCHUNREF, Constants.LOCAL_HISTORY,
             Constants.LOCAL_OUTLINE, Constants.LOCAL_FILEPOSITION, Constants.LOCAL_FILESPATHS, Constants.LOCAL_IMAGES,
             Constants.LOCAL_PLUGIN_DOCKS, Constants.LOCAL_EMOJIS, Constants.LOCAL_MOVE_PATH, Constants.LOCAL_RECENT_DOCS,
-            Constants.LOCAL_CLOSED_TABS].forEach((key) => {
+            Constants.LOCAL_CLOSED_TABS, Constants.LOCAL_TODO, Constants.LOCAL_KNOWLEDGE,
+            Constants.LOCAL_CODEX_CHAT].forEach((key) => {
             if (typeof response.data[key] === "string") {
                 try {
                     const parseData = JSON.parse(response.data[key]);
@@ -610,6 +622,7 @@ export const getLocalStorage = (cb: () => void) => {
             Object.keys(window.siyuan.storage[Constants.LOCAL_SEARCHDATA].subTypes).length === 0) {
             window.siyuan.storage[Constants.LOCAL_SEARCHDATA].subTypes = getDefaultSubType();
         }
+        await hydrateSharedStorage();
         cb();
     });
 };
@@ -618,14 +631,20 @@ export const setStorageVal = (key: string, val: any, cb?: () => void) => {
     if (window.siyuan.config.readonly || window.siyuan.isPublish) {
         return;
     }
-    fetchPost("/api/storage/setLocalStorageVal", {
-        app: Constants.SIYUAN_APPID,
-        key,
-        val,
-    }, () => {
-        if (cb) {
-            cb();
-        }
+    applySharedStorageVal(key, val);
+    persistSharedStorageVal(key, val).then((persistedVal) => {
+        applySharedStorageVal(key, persistedVal);
+        fetchPost("/api/storage/setLocalStorageVal", {
+            app: Constants.SIYUAN_APPID,
+            key,
+            val: persistedVal,
+        }, () => {
+            if (cb) {
+                cb();
+            }
+        });
+    }).catch((error) => {
+        console.warn(`Save shared storage [${key}] failed`, error);
     });
 };
 

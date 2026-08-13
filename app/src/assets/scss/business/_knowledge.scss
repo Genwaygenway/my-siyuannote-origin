@@ -1,0 +1,49 @@
+.sy__knowledge {
+  background-color: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--b3-theme-background));
+
+  .block__icons {
+    min-height: 40px;
+    padding: 0 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    background-color: transparent;
+  }
+
+  .block__logo {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+
+  & > .fn__flex-1 {
+    box-sizing: border-box;
+    padding: 5px 8px 10px !important;
+    background-color: transparent;
+  }
+
+  .b3-list {
+    margin: 0 0 2px;
+    background-color: transparent;
+  }
+
+  .b3-list-item {
+    min-height: 34px;
+    border-radius: 8px;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+
+    &--focus {
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 14%, transparent) inset;
+    }
+  }
+
+  .b3-list-item__text {
+    font-size: 13.5px;
+    letter-spacing: -.005em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sy__knowledge .b3-list-item {
+    transition: none;
+  }
+}

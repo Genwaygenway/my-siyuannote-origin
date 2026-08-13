@@ -26,6 +26,7 @@ import {Constants} from "../constants";
 import {fetchPost} from "../util/fetch";
 import {isWindow} from "../util/functions";
 import {Wnd} from "./Wnd";
+import {Knowledge} from "./dock/Knowledge";
 
 export const setTabPosition = (onlyPadding = false, onlyClear = false) => {
     const isWindowMode = isWindow();
@@ -382,6 +383,8 @@ export const copyTab = (app: App, tab: Tab) => {
                     rootId: tab.model.rootId,
                     type: tab.model.type,
                 });
+            } else if (tab.model instanceof Knowledge) {
+                model = new Knowledge(app, newTab);
             } else if (tab.model instanceof Files) {
                 model = new Files({
                     app,

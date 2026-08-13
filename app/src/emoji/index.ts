@@ -2,8 +2,6 @@ import {getRandom, isMobile} from "../util/functions";
 import {fetchPost} from "../util/fetch";
 import {Constants} from "../constants";
 /// #if !MOBILE
-import {Files} from "../layout/dock/Files";
-import {getDockByType} from "../layout/tabUtil";
 /// #endif
 import {getAllEditor, getAllModels} from "../layout/getAll";
 import {setNoteBook} from "../util/pathName";
@@ -723,15 +721,14 @@ export const updateFileTreeEmoji = (unicode: string, id: string, icon = "iconFil
     /// #if MOBILE
     emojiElement = document.querySelector(`#sidebar [data-type="sidebar-file"] [data-node-id="${id}"] .b3-list-item__icon`);
     /// #else
-    const dockFile = getDockByType("file");
-    if (dockFile) {
-        const files = dockFile.data.file as Files;
+    getAllModels().files.find((files) => {
         if (icon === "iconFile") {
             emojiElement = files.element.querySelector(`[data-node-id="${id}"] .b3-list-item__icon`);
         } else {
             emojiElement = files.element.querySelector(`[data-node-id="${id}"] .b3-list-item__icon`) || files.element.querySelector(`[data-url="${id}"] .b3-list-item__icon`) || files.closeElement.querySelector(`[data-url="${id}"] .b3-list-item__icon`);
         }
-    }
+        return Boolean(emojiElement);
+    });
     /// #endif
     if (emojiElement) {
         emojiElement.innerHTML = unicode2Emoji(unicode || (icon === "iconFile" ? (emojiElement.previousElementSibling.classList.contains("fn__hidden") ? window.siyuan.storage[Constants.LOCAL_IMAGES].file : window.siyuan.storage[Constants.LOCAL_IMAGES].folder) : window.siyuan.storage[Constants.LOCAL_IMAGES].note));

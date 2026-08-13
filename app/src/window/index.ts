@@ -29,6 +29,7 @@ import {renderSnippet} from "../config/util/snippets";
 import {setBodyHighlight} from "../util/assets";
 import {reloadSync} from "../util/reloadSync";
 import {setTitle} from "../util/processTitle";
+import {applySharedStorageVal} from "../util/sharedStorage";
 
 class App {
     public plugins: import("../plugin").Plugin[] = [];
@@ -88,12 +89,12 @@ class App {
                                 break;
                             case "setLocalStorageVal":
                                 if (window.siyuan.storage) {
-                                    window.siyuan.storage[data.data.key] = data.data.val;
+                                    applySharedStorageVal(data.data.key, data.data.val);
                                 }
                                 break;
                             case "setLocalStorageVals":
                                 Object.keys(data.data.keyVals).forEach((k) => {
-                                    window.siyuan.storage[k] = data.data.keyVals[k];
+                                    applySharedStorageVal(k, data.data.keyVals[k]);
                                 });
                                 break;
                             case "removeLocalStorageVal":

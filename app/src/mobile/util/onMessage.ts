@@ -12,6 +12,7 @@ import {reloadEmoji} from "../../emoji";
 import {renderSnippet} from "../../config/util/snippets";
 import {redirectToCheckAuth} from "../../util/pathName";
 import {reloadSync} from "../../util/reloadSync";
+import {applySharedStorageVal, hydrateSharedStorage} from "../../util/sharedStorage";
 
 let statusTimeout: number;
 const statusElement = document.querySelector("#status") as HTMLElement;
@@ -60,6 +61,9 @@ export const onMessage = (app: App, data: IWebSocketData) => {
             case "syncMergeResult":
                 reloadSync(app, data.data);
                 break;
+            case "reloadSharedStorage":
+                void hydrateSharedStorage();
+                break;
             case "setConf":
                 window.siyuan.config = data.data;
                 break;
@@ -74,11 +78,11 @@ export const onMessage = (app: App, data: IWebSocketData) => {
                 window.siyuan.config.editor.readOnly = data.data;
                 break;
             case "setLocalStorageVal":
-                window.siyuan.storage[data.data.key] = data.data.val;
+                applySharedStorageVal(data.data.key, data.data.val);
                 break;
             case "setLocalStorageVals":
                 Object.keys(data.data.keyVals).forEach((k) => {
-                    window.siyuan.storage[k] = data.data.keyVals[k];
+                    applySharedStorageVal(k, data.data.keyVals[k]);
                 });
                 break;
             case "removeLocalStorageVal":

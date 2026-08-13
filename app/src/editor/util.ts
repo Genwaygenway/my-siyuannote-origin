@@ -2,7 +2,6 @@ import {Tab} from "../layout/Tab";
 import {Editor} from "./index";
 import {Wnd} from "../layout/Wnd";
 import {getInstanceById, getWndByLayout, pdfIsLoading, setPanelFocus} from "../layout/util";
-import {getDockByType} from "../layout/tabUtil";
 import {getAllModels, getAllTabs} from "../layout/getAll";
 import {highlightById, scrollCenter} from "../util/highlightById";
 import {getDisplayName, getDocDisplayName, pathPosix, useShell} from "../util/pathName";
@@ -32,7 +31,7 @@ import {Search} from "../search";
 import {App} from "../index";
 import {newCardModel} from "../card/newCardTab";
 import {preventScroll} from "../protyle/scroll/preventScroll";
-import {clearOBG} from "../layout/dock/util";
+import {clearOBG, getFileTreeByNotebook} from "../layout/dock/util";
 import {Model} from "../layout/Model";
 import {hideElements} from "../protyle/ui/hideElements";
 
@@ -585,7 +584,7 @@ export const updatePanelByEditor = (options: {
             }
         }
         if (window.siyuan.config.fileTree.alwaysSelectOpenedFile && options.protyle) {
-            const fileModel = getDockByType("file")?.data.file;
+            const fileModel = getFileTreeByNotebook(options.protyle.notebookId);
             if (fileModel instanceof Files) {
                 const target = fileModel.element.querySelector(`li[data-path="${options.protyle.path}"]`);
                 if (!target || (target && !target.classList.contains("b3-list-item--focus"))) {

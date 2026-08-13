@@ -21,11 +21,13 @@ import {Inbox} from "../../layout/dock/Inbox";
 import {App} from "../../index";
 import {checkFold} from "../../util/noRelyPCFunction";
 import {MobileCustom} from "../dock/MobileCustom";
+import {MobileCustomFeatures} from "../dock/MobileCustomFeatures";
 import {Menu} from "../../plugin/Menu";
 import {showMessage} from "../../dialog/message";
 import {setTitle} from "../../util/processTitle";
 
 let custom: MobileCustom;
+let customFeatures: MobileCustomFeatures;
 const openDockMenu = (app: App) => {
     const menu = new Menu(Constants.MENU_DOCK_MOBILE);
     if (menu.isOpen) {
@@ -85,6 +87,12 @@ export const initFramework = (app: App, isStart: boolean) => {
         }
         if (!type) {
             closePanel();
+            return;
+        }
+        if (type === "sidebar-custom-tab") {
+            closePanel();
+            customFeatures ||= new MobileCustomFeatures(app);
+            customFeatures.openHub();
             return;
         }
         firstToolbarElement.querySelectorAll(".toolbar__icon").forEach(item => {

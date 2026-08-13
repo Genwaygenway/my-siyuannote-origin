@@ -17,13 +17,91 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/88250/gulu"
 	"github.com/gin-gonic/gin"
+	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/model"
+	"github.com/siyuan-note/siyuan/kernel/sharedstorage"
 	"github.com/siyuan-note/siyuan/kernel/util"
 )
+
+func getSharedStorage(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	var key string
+	if !util.ParseJsonArgs(arg, ret, util.BindJsonArg("key", &key, true, true)) {
+		return
+	}
+
+	store := sharedstorage.New(util.DataDir, model.Conf.System.ID)
+	snapshot, err := store.Read(key)
+	if errors.Is(err, sharedstorage.ErrInvalidKey) || errors.Is(err, sharedstorage.ErrInvalidDeviceID) {
+		ret.Code = http.StatusBadRequest
+		ret.Msg = err.Error()
+		return
+	}
+	if err != nil {
+		logging.LogErrorf("read shared storage [%s] failed: %s", key, err)
+		ret.Code = http.StatusInternalServerError
+		ret.Msg = http.StatusText(http.StatusInternalServerError) + errMsgSeeKernelLog
+		return
+	}
+	ret.Data = snapshot
+}
+
+func setSharedStorage(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	var key, expectedRevision string
+	if !util.ParseJsonArgs(arg, ret,
+		util.BindJsonArg("key", &key, true, true),
+		util.BindJsonArg("expectedRevision", &expectedRevision, true, false),
+	) {
+		return
+	}
+	value, valueOK := arg["value"]
+	if !valueOK || value == nil {
+		ret.Code = http.StatusBadRequest
+		ret.Msg = "Field [value] must not be empty"
+		return
+	}
+
+	store := sharedstorage.New(util.DataDir, model.Conf.System.ID)
+	snapshot, conflict, err := store.Write(key, expectedRevision, value)
+	if errors.Is(err, sharedstorage.ErrInvalidKey) || errors.Is(err, sharedstorage.ErrInvalidDeviceID) {
+		ret.Code = http.StatusBadRequest
+		ret.Msg = err.Error()
+		return
+	}
+	if err != nil {
+		logging.LogErrorf("write shared storage [%s] failed: %s", key, err)
+		ret.Code = http.StatusInternalServerError
+		ret.Msg = http.StatusText(http.StatusInternalServerError) + errMsgSeeKernelLog
+		return
+	}
+	ret.Data = snapshot
+	if conflict {
+		ret.Code = http.StatusConflict
+		ret.Msg = "shared storage was updated; retry with the returned snapshot"
+		return
+	}
+	model.IncSync()
+}
 
 func getLocalStorage(c *gin.Context) {
 	ret := gulu.Ret.NewResult()

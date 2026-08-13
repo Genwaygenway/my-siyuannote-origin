@@ -33,6 +33,7 @@ import {hideTooltip, showTooltip} from "../../dialog/tooltip";
 import {selectOpenTab} from "./util";
 import {hideDragTip, showDragTip, transparentImgSrc} from "../../protyle/util/dragTip";
 import {buildNotebookGroupTree, getNotebookDisplayName, INotebookGroup} from "../../util/notebookGroup";
+import {bindSharedStorage} from "../../util/sharedStorage";
 
 export class Files extends Model {
     public element: HTMLElement;
@@ -40,9 +41,11 @@ export class Files extends Model {
     public closeElement: HTMLElement;
     public lastSelectedElement: Element = null;
     private actionsElement: HTMLElement;
+    public dockType: "file" | "knowledge";
 
-    constructor(options: { tab: Tab, app: App }) {
+    constructor(options: { tab: Tab, app: App, dockType?: "file" | "knowledge" }) {
         super({app: options.app});
+        this.dockType = options.dockType || "file";
         this.connect({
             type: "filetree",
             id: options.tab.id,
@@ -137,7 +140,7 @@ export class Files extends Model {
             while (target && !target.isEqualNode(this.actionsElement)) {
                 const type = target.getAttribute("data-type");
                 if (type === "min") {
-                    getDockByType("file").toggleModel("file", false, true);
+                    getDockByType(this.dockType).toggleModel(this.dockType, false, true);
                     event.preventDefault();
                     event.stopPropagation();
                     window.siyuan.menus.menu.remove();
@@ -812,11 +815,62 @@ export class Files extends Model {
             }
             newElement.classList.remove("dragover", "dragover__bottom", "dragover__top");
         });
+        bindSharedStorage(options.tab.panelElement, (key) => {
+            if (key === Constants.LOCAL_KNOWLEDGE) {
+                this.init(false);
+            }
+        });
         this.init();
         if (window.siyuan.config.openHelp) {
             // 需等待链接建立，不能放在 ongetconfig 中
             mountHelp();
         }
+    }
+
+    private getKnowledgeNotebookIds() {
+        const storage = window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] as {notebooks?: string[]};
+        return Array.isArray(storage?.notebooks) ? storage.notebooks : [];
+    }
+
+    public containsNotebook(notebookId: string) {
+        const isKnowledge = this.getKnowledgeNotebookIds().includes(notebookId);
+        return isKnowledge === (this.dockType === "knowledge");
+    }
+
+    private setKnowledgeNotebookIds(notebooks: string[]) {
+        const storage = window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] as {
+            notebooks?: string[],
+            updatedAt?: Record<string, number>,
+            removedAt?: Record<string, number>,
+        } || {};
+        const previous = new Set(Array.isArray(storage.notebooks) ? storage.notebooks : []);
+        const next = new Set(notebooks);
+        const now = Date.now();
+        storage.updatedAt = storage.updatedAt || {};
+        storage.removedAt = storage.removedAt || {};
+        previous.forEach((id) => {
+            if (!next.has(id)) {
+                storage.removedAt[id] = now;
+            }
+        });
+        next.forEach((id) => {
+            if (!previous.has(id)) {
+                storage.updatedAt[id] = now;
+                delete storage.removedAt[id];
+            }
+        });
+        storage.notebooks = Array.from(next);
+        window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] = storage;
+        setStorageVal(Constants.LOCAL_KNOWLEDGE, storage);
+    }
+
+    private refreshNotebookScopes() {
+        ["file", "knowledge"].forEach(type => {
+            const model = getDockByType(type)?.data[type];
+            if (model instanceof Files) {
+                model.init(false);
+            }
+        });
     }
 
     private handleMsgCallback(data: IWebSocketData) {
@@ -1026,6 +1080,10 @@ data-type="navigation-root" data-path="/">
         const closedNotebooks: INotebook[] = [];
         const scrollTop = this.element.scrollTop;
         window.siyuan.notebooks.forEach((item) => {
+            const isKnowledge = this.getKnowledgeNotebookIds().includes(item.id);
+            if (isKnowledge !== (this.dockType === "knowledge")) {
+                return;
+            }
             if (item.closed) {
                 closeCounter++;
                 closedNotebooks.push(item);
@@ -1434,7 +1492,12 @@ aria-label="${ariaLabel}">${getDocDisplayName(item.name, item.titleEmpty, true)}
                 icon: "iconNewNoteBook",
                 label: window.siyuan.languages.newNotebook,
                 click: () => {
-                    newNotebook();
+                    newNotebook((notebook) => {
+                        if (this.dockType === "knowledge") {
+                            this.setKnowledgeNotebookIds([...this.getKnowledgeNotebookIds(), notebook.id]);
+                        }
+                        this.refreshNotebookScopes();
+                    });
                 }
             }).element);
         }

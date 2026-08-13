@@ -54,8 +54,9 @@ type Property struct {
 }
 
 type CallToolResult struct {
-	Content []ContentItem `json:"content"`
-	IsError bool          `json:"isError,omitempty"`
+	Content           []ContentItem `json:"content"`
+	StructuredContent any           `json:"structuredContent,omitempty"`
+	IsError           bool          `json:"isError,omitempty"`
 }
 
 type ContentItem struct {

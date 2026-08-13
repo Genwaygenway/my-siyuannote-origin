@@ -613,22 +613,21 @@ const initMainWindow = () => {
     workspaces.push({
         browserWindow: currentWindow,
     });
-    // loadURL 后设置超时兜底：前端 app bundle 加载或初始化异常导致 siyuan-ready-to-show 迟迟不发时，
-    // 强制销毁 boot 窗口并显示主窗口，避免永久卡在启动页
-    const readyToShowTimeout = setTimeout(() => {
-        if (bootWindow && !bootWindow.isDestroyed()) {
-            if (!currentWindow.isDestroyed()) {
-                writeLog("siyuan-ready-to-show timeout, force showing main window");
-                currentWindow.show();
-            }
-            bootWindow.destroy();
+    let readyToShow = false;
+    const showMainWindow = (reason) => {
+        if (readyToShow || currentWindow.isDestroyed()) {
+            return;
         }
-    }, 60000);
-    ipcMain.once("siyuan-ready-to-show", () => {
-        clearTimeout(readyToShowTimeout); // 正常收到信号则取消超时兜底
+        readyToShow = true;
+        if (reason) {
+            writeLog(reason);
+        }
         if (isOpenAsHidden()) {
             currentWindow.minimize();
         } else {
+            currentWindow.webContents.executeJavaScript("document.getElementById('loading')?.remove()", true).catch((e) => {
+                writeLog("remove loading failed: " + e);
+            });
             currentWindow.show();
             if (windowState.isMaximized) {
                 currentWindow.maximize();
@@ -639,6 +638,13 @@ const initMainWindow = () => {
         if (bootWindow && !bootWindow.isDestroyed()) {
             bootWindow.destroy();
         }
+    };
+    const readyToShowTimeout = setTimeout(() => {
+        showMainWindow("siyuan-ready-to-show timeout, force showing main window");
+    }, 60000);
+    ipcMain.once("siyuan-ready-to-show", () => {
+        clearTimeout(readyToShowTimeout); // 正常收到信号则取消超时兜底
+        showMainWindow("");
     });
 };
 

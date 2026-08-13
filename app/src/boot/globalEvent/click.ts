@@ -67,7 +67,15 @@ export const globalClick = (event: MouseEvent & { target: HTMLElement }) => {
     if (dockItemElement) {
         const type = dockItemElement.getAttribute("data-type") as TDock;
         if (type) {
-            getDockByType(type).toggleModel(type, false, true);
+            if (!["todo", "calendar"].includes(type)) {
+                const foregroundTodo = getAllModels().todo.find(item =>
+                    item.parent?.headElement?.classList.contains("item--focus") &&
+                    item.parent.panelElement.closest(".layout__center"));
+                if (foregroundTodo) {
+                    foregroundTodo.parent.parent.removeTab(foregroundTodo.parent.id, false, false);
+                }
+            }
+            getDockByType(type).toggleModel(type, false, !["todo", "calendar"].includes(type));
         }
     }
 

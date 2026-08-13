@@ -34,6 +34,7 @@
             <svg data-type="sidebar-tag-tab" class="toolbar__icon"><use xlink:href="#iconTag"></use></svg>
             <svg data-type="sidebar-backlink-tab" class="toolbar__icon"><use xlink:href="#iconLink"></use></svg>
             <svg data-type="sidebar-inbox-tab" class="toolbar__icon"><use xlink:href="#iconInbox"></use></svg>
+            <svg data-type="sidebar-custom-tab" class="toolbar__icon"><use xlink:href="#iconLayoutGrid"></use></svg>
             <svg data-menu="true" data-type="sidebar-plugin-tab" class="toolbar__icon fn__none"><use xlink:href="#iconPlugin"></use></svg>
         </div>
         <svg class="toolbar__icon"><use xlink:href="#iconRight"></use></svg>
@@ -45,6 +46,7 @@
         <div class="fn__flex-column fn__none" data-type="sidebar-tag"></div>
         <div class="fn__flex-column fn__none" data-type="sidebar-backlink"></div>
         <div class="fn__flex-column fn__none" data-type="sidebar-inbox"></div>
+        <div class="fn__flex-column fn__none" data-type="sidebar-custom"></div>
         <div class="fn__flex-column fn__none" data-type="sidebar-plugin"></div>
     </div>
 </div>

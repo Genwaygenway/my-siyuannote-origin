@@ -17,11 +17,14 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -31,11 +34,20 @@ import (
 	"github.com/siyuan-note/siyuan/kernel/conf"
 	"github.com/siyuan-note/siyuan/kernel/mcp/tools"
 	"github.com/siyuan-note/siyuan/kernel/model"
+	"github.com/siyuan-note/siyuan/kernel/util"
 )
 
 const (
 	defaultMCPServerTimeout = 30 * time.Second
 )
+
+type CodexResumeOptions struct {
+	ThreadID        string
+	Prompt          string
+	Model           string
+	ReasoningEffort string
+	Permission      string
+}
 
 type Connection struct {
 	ServerName string
@@ -288,8 +300,9 @@ func mcpToolHandler(serverName, toolName string, timeout time.Duration) func(arg
 		}
 
 		syr := tools.CallToolResult{
-			IsError: result.IsError,
-			Content: []tools.ContentItem{{Type: "text", Text: text}},
+			IsError:           result.IsError,
+			Content:           []tools.ContentItem{{Type: "text", Text: text}},
+			StructuredContent: result.StructuredContent,
 		}
 		return syr, nil
 	}
@@ -451,4 +464,120 @@ func MCPStatus() []MCPStatusItem {
 		items = append(items, item)
 	}
 	return items
+}
+
+// ResumeCodex 通过 Codex 的持久化线程存储恢复 MCP 进程重启后失效的会话。
+func ResumeCodex(parent context.Context, servers []conf.MCPServer, options CodexResumeOptions) (string, error) {
+	server, err := findCodexServer(servers)
+	if err != nil {
+		return "", err
+	}
+
+	cwd := util.WorkspaceDir
+	sandbox := "read-only"
+	switch options.Permission {
+	case "read-only":
+	case "siyuan-write":
+		cwd = util.TempDir
+		sandbox = "workspace-write"
+	default:
+		return "", fmt.Errorf("invalid Codex permission")
+	}
+
+	outputFile, err := os.CreateTemp(util.TempDir, "codex-resume-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("create Codex output file: %w", err)
+	}
+	outputPath := outputFile.Name()
+	if err = outputFile.Close(); err != nil {
+		os.Remove(outputPath)
+		return "", fmt.Errorf("close Codex output file: %w", err)
+	}
+	defer os.Remove(outputPath)
+
+	args, err := buildCodexResumeArgs(server.Args, options, outputPath, cwd, sandbox)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(parent, serverTimeout(server))
+	defer cancel()
+	cmd := exec.CommandContext(ctx, server.Command, args...)
+	cmd.Dir = cwd
+	cmd.Stdout = io.Discard
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err = cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return "", fmt.Errorf("Codex resume timed out")
+		}
+		detail := strings.TrimSpace(stderr.String())
+		if len(detail) > 4000 {
+			detail = detail[len(detail)-4000:]
+		}
+		if detail == "" {
+			return "", fmt.Errorf("Codex resume failed: %w", err)
+		}
+		return "", fmt.Errorf("Codex resume failed: %s", detail)
+	}
+
+	output, err := os.ReadFile(outputPath)
+	if err != nil {
+		return "", fmt.Errorf("read Codex response: %w", err)
+	}
+	content := strings.TrimSpace(string(output))
+	if content == "" {
+		return "", fmt.Errorf("Codex returned an empty response")
+	}
+	return content, nil
+}
+
+func findCodexServer(servers []conf.MCPServer) (conf.MCPServer, error) {
+	for _, server := range servers {
+		if !server.Enabled || server.Type != "stdio" || server.Command == "" ||
+			!strings.Contains(strings.ToLower(server.Name), "codex") {
+			continue
+		}
+		for _, arg := range server.Args {
+			if arg == "mcp-server" {
+				return server, nil
+			}
+		}
+	}
+	return conf.MCPServer{}, fmt.Errorf("Codex MCP server is not configured")
+}
+
+func buildCodexResumeArgs(serverArgs []string, options CodexResumeOptions, outputPath, cwd, sandbox string) ([]string, error) {
+	args := append([]string(nil), serverArgs...)
+	foundMCPServer := false
+	for i, arg := range args {
+		if arg == "mcp-server" {
+			args[i] = "exec"
+			foundMCPServer = true
+			break
+		}
+	}
+	if !foundMCPServer {
+		return nil, fmt.Errorf("Codex MCP server command is invalid")
+	}
+
+	args = append(args,
+		"--sandbox", sandbox,
+		"--cd", filepath.Clean(cwd),
+		"--skip-git-repo-check",
+		"--color", "never",
+		"--output-last-message", outputPath,
+		"-c", `approval_policy="never"`,
+	)
+	if options.Model != "" {
+		args = append(args, "--model", options.Model)
+	}
+	if options.ReasoningEffort != "" {
+		args = append(args, "-c", fmt.Sprintf(`model_reasoning_effort="%s"`, options.ReasoningEffort))
+	}
+	if sandbox == "workspace-write" {
+		args = append(args, "-c", "sandbox_workspace_write.network_access=true")
+	}
+	args = append(args, "resume", options.ThreadID, options.Prompt)
+	return args, nil
 }

@@ -47,6 +47,7 @@ import {renderSnippet} from "./config/util/snippets";
 import {setBodyHighlight} from "./util/assets";
 import {reloadSync} from "./util/reloadSync";
 import {setTitle} from "./util/processTitle";
+import {applySharedStorageVal, hydrateSharedStorage} from "./util/sharedStorage";
 
 export class App {
     public plugins: import("./plugin").Plugin[] = [];
@@ -101,6 +102,9 @@ export class App {
                         case "syncMergeResult":
                             reloadSync(this, data.data);
                             break;
+                        case "reloadSharedStorage":
+                            void hydrateSharedStorage();
+                            break;
                         case "reloaddoc":
                             reloadSync(this, {upsertRootIDs: [data.data], removeRootIDs: []}, false, false, true);
                             break;
@@ -128,12 +132,12 @@ export class App {
                             break;
                         case "setLocalStorageVal":
                             if (window.siyuan.storage) {
-                                window.siyuan.storage[data.data.key] = data.data.val;
+                                applySharedStorageVal(data.data.key, data.data.val);
                             }
                             break;
                         case "setLocalStorageVals":
                             Object.keys(data.data.keyVals).forEach((k) => {
-                                window.siyuan.storage[k] = data.data.keyVals[k];
+                                applySharedStorageVal(k, data.data.keyVals[k]);
                             });
                             break;
                         case "removeLocalStorageVal":

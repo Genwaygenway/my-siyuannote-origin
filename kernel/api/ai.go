@@ -21,6 +21,7 @@ import (
 
 	"github.com/88250/gulu"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/siyuan-note/logging"
 	"github.com/siyuan-note/siyuan/kernel/conf"
 	mcpclient "github.com/siyuan-note/siyuan/kernel/mcp/client"
@@ -169,6 +170,67 @@ func mcpStatus(c *gin.Context) {
 	ret := gulu.Ret.NewResult()
 	defer c.JSON(http.StatusOK, ret)
 	ret.Data = mcpclient.MCPStatus()
+}
+
+// resumeCodex 恢复因 Codex MCP 进程重启而失去内存状态的持久化线程。
+func resumeCodex(c *gin.Context) {
+	ret := gulu.Ret.NewResult()
+	defer c.JSON(http.StatusOK, ret)
+
+	arg, ok := util.JsonArg(c, ret)
+	if !ok {
+		return
+	}
+
+	var threadID, prompt, modelName, reasoningEffort, permission string
+	if !util.ParseJsonArgs(arg, ret,
+		util.BindJsonArg("threadId", &threadID, true, true),
+		util.BindJsonArg("prompt", &prompt, true, true),
+		util.BindJsonArg("model", &modelName, false, false),
+		util.BindJsonArg("reasoningEffort", &reasoningEffort, false, false),
+		util.BindJsonArg("permission", &permission, true, true),
+	) {
+		return
+	}
+	if _, err := uuid.Parse(threadID); err != nil {
+		ret.Code = -1
+		ret.Msg = "invalid Codex thread ID"
+		return
+	}
+	switch reasoningEffort {
+	case "", "low", "medium", "high", "xhigh", "max", "ultra":
+	default:
+		ret.Code = -1
+		ret.Msg = "invalid Codex reasoning effort"
+		return
+	}
+	if permission != "read-only" && permission != "siyuan-write" {
+		ret.Code = -1
+		ret.Msg = "invalid Codex permission"
+		return
+	}
+	if model.Conf == nil || model.Conf.AI == nil || model.Conf.AI.MCP == nil {
+		ret.Code = -1
+		ret.Msg = "Codex MCP server is not configured"
+		return
+	}
+
+	content, err := mcpclient.ResumeCodex(c.Request.Context(), model.Conf.AI.MCP.Servers, mcpclient.CodexResumeOptions{
+		ThreadID:        threadID,
+		Prompt:          prompt,
+		Model:           modelName,
+		ReasoningEffort: reasoningEffort,
+		Permission:      permission,
+	})
+	if err != nil {
+		ret.Code = -1
+		ret.Msg = err.Error()
+		return
+	}
+	ret.Data = map[string]string{
+		"threadId": threadID,
+		"content":  content,
+	}
 }
 
 // reindexEmbedding 清空嵌入向量表并触发后台索引器重新计算所有块，异步执行。

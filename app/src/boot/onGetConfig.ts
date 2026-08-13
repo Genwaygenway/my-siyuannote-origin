@@ -24,7 +24,7 @@ import {openChangelog} from "./openChangelog";
 import {App} from "../index";
 import {initWindowEvent} from "./globalEvent/event";
 import {sendGlobalShortcut} from "./globalEvent/keydown";
-import {closeWindow} from "../window/closeWin";
+import {closeWindow, unloadPlugins} from "../window/closeWin";
 import {correctHotkey} from "./globalEvent/commonHotkey";
 import {recordBeforeResizeTop} from "../protyle/util/resize";
 import {processSiYuanUri} from "../util/uri";
@@ -118,9 +118,10 @@ export const initWindow = async (app: App) => {
         cmd: "setSpellCheckerLanguages",
         languages: window.siyuan.config.editor.spellcheckLanguages
     });
+    let closing = false;
     const winOnClose = (close = false) => {
         exportLayout({
-            cb() {
+            async cb() {
                 if (window.siyuan.config.appearance.closeButtonBehavior === 1 && !close) {
                     // 最小化
                     if ("windows" === window.siyuan.config.system.os) {
@@ -131,6 +132,11 @@ export const initWindow = async (app: App) => {
                         ipcRenderer.send(Constants.SIYUAN_CMD, "closeButtonBehavior");
                     }
                 } else {
+                    if (closing) {
+                        return;
+                    }
+                    closing = true;
+                    await unloadPlugins(app);
                     exitSiYuan();
                 }
             },
