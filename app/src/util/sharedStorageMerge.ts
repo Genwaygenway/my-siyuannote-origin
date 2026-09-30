@@ -13,6 +13,8 @@ export const mergeKnowledgeStorage = (leftValue: any = {}, rightValue: any = {})
     const right = asObject(rightValue);
     const updatedAt = mergeVersionMap(left.updatedAt, right.updatedAt);
     const removedAt = mergeVersionMap(left.removedAt, right.removedAt);
+    const usedAt = mergeVersionMap(left.usedAt, right.usedAt);
+    const docsUsedAt = mergeVersionMap(left.docsUsedAt, right.docsUsedAt);
     const explicitNotebooks = new Set<string>([
         ...(Array.isArray(left.notebooks) ? left.notebooks : []),
         ...(Array.isArray(right.notebooks) ? right.notebooks : []),
@@ -23,7 +25,7 @@ export const mergeKnowledgeStorage = (leftValue: any = {}, rightValue: any = {})
         const removed = removedAt[id] || 0;
         return id && (updated > removed || updated === 0 && removed === 0 && explicitNotebooks.has(id));
     });
-    return {notebooks, updatedAt, removedAt};
+    return {notebooks, updatedAt, removedAt, usedAt, docsUsedAt};
 };
 
 export const mergeTodoStorage = (leftValue: any = {}, rightValue: any = {}) => {

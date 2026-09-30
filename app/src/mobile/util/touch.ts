@@ -26,13 +26,8 @@ let isFirstMove = true;
 // 长按进入多选的定时器
 let longPressTimer: number;
 
-const popSide = (render = true) => {
-    if (render) {
-        document.getElementById("toolbarFile").dispatchEvent(new CustomEvent("click"));
-    } else {
-        activeBlur();
-        document.getElementById("sidebar").style.transform = "translateX(0px)";
-    }
+const popSide = () => {
+    document.getElementById("toolbarFile").dispatchEvent(new CustomEvent("click"));
 };
 
 // 清除长按进入多选的定时器
@@ -185,7 +180,7 @@ export const handleTouchEnd = (event: TouchEvent) => {
         if (isXScroll) {
             if (firstDirection === "toLeft") {
                 if (lastClientX) {
-                    popSide(false);
+                    popSide();
                 } else {
                     closePanel();
                 }
@@ -193,11 +188,11 @@ export const handleTouchEnd = (event: TouchEvent) => {
                 if (lastClientX) {
                     closePanel();
                 } else {
-                    popSide(false);
+                    popSide();
                 }
             }
         } else {
-            popSide(false);
+            popSide();
         }
         return;
     }

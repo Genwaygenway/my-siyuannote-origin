@@ -168,7 +168,7 @@ class App {
                         fetchPost("/api/system/getEmojiConf", {}, emojiResponse => {
                             window.siyuan.emojis = emojiResponse.data as IEmoji[];
                             setNoteBook(() => {
-                                initFramework(this, confResponse.data.start);
+                                initFramework(this);
                                 initRightMenu(this);
                                 openChangelog();
                             });

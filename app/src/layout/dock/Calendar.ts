@@ -12,6 +12,17 @@ import {getLunarDate, getDayDetail, getLunarFestivals, getSolarTerms} from "chin
 import {bindSharedStorage} from "../../util/sharedStorage";
 import {confirmDialog} from "../../dialog/confirmDialog";
 
+/** 日历中展示的常用传统节日；键为农历库返回的名称，值为日历显示名称 */
+const CALENDAR_FESTIVALS: Record<string, string> = {
+    "元宵节": "元宵节",
+    "端午节": "端午节",
+    "乞巧节": "七夕节",
+    "中秋节": "中秋节",
+    "重阳节": "重阳节",
+    "腊八节": "腊八节",
+    "除夕": "除夕",
+};
+
 export interface ICalendarEntry {
     id: string;
     date: string;       // "YYYY-MM-DD"
@@ -278,10 +289,13 @@ export class Calendar extends Model {
             // 忽略
         }
         try {
-            // 传统节日
+            // 仅显示常用传统节日，过滤民俗、宗教诞辰等条目
             const festivals = getLunarFestivals(dateStr);
-            if (festivals.length > 0 && festivals[0].name.length > 0) {
-                info.festival = festivals[0].name[0];
+            if (festivals.length > 0) {
+                const festival = festivals[0].name.find(name => CALENDAR_FESTIVALS[name]);
+                if (festival) {
+                    info.festival = CALENDAR_FESTIVALS[festival];
+                }
             }
         } catch {
             // 忽略

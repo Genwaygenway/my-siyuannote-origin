@@ -10,7 +10,7 @@ import {isInEmbedBlock} from "../protyle/util/hasClosest";
 import {setEditMode} from "../protyle/util/setEditMode";
 import {hideElements} from "../protyle/ui/hideElements";
 import {pushBack} from "./util/MobileBackFoward";
-import {setStorageVal} from "../protyle/util/compatibility";
+import {setStorageVal, updateKnowledgeDocumentUsedAt} from "../protyle/util/compatibility";
 import {showMessage} from "../dialog/message";
 import {App} from "../index";
 import {initMirror} from "../protyle/undo/globalUndo";
@@ -41,6 +41,8 @@ export const openMobileFileById = (app: App, id: string, action: TProtyleAction[
             }
         });
         if (blockElement) {
+            updateKnowledgeDocumentUsedAt(window.siyuan.mobile.editor.protyle.notebookId,
+                window.siyuan.mobile.editor.protyle.path, window.siyuan.mobile.editor.protyle.block.rootID);
             pushBack();
             if (action.includes(Constants.CB_GET_HL)) {
                 highlightById(window.siyuan.mobile.editor.protyle, id, scrollPosition);
@@ -59,6 +61,7 @@ export const openMobileFileById = (app: App, id: string, action: TProtyleAction[
             showMessage(data.msg);
             return;
         }
+        updateKnowledgeDocumentUsedAt(data.data.box, data.data.path, data.data.rootID);
         const protyleOptions: IProtyleOptions = {
             blockId: id,
             rootId: data.data.rootID,

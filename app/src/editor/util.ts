@@ -34,6 +34,7 @@ import {preventScroll} from "../protyle/scroll/preventScroll";
 import {clearOBG, getFileTreeByNotebook} from "../layout/dock/util";
 import {Model} from "../layout/Model";
 import {hideElements} from "../protyle/ui/hideElements";
+import {updateKnowledgeDocumentUsedAt} from "../protyle/util/compatibility";
 
 export const openFileById = async (options: {
     app: App,
@@ -56,6 +57,7 @@ export const openFileById = async (options: {
         showMessage(response.msg);
         return;
     }
+    updateKnowledgeDocumentUsedAt(response.data.box, response.data.path, response.data.rootID);
 
     return openFile({
         app: options.app,
