@@ -985,6 +985,22 @@ export const initWindowOpenOverride = (app: App, openExternal?: (url: string) =>
     };
 };
 
+export const updateKnowledgeDocumentUsedAt = (notebookId: string, path: string, rootID: string) => {
+    const storage = window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] as {
+        notebooks?: string[];
+        docsUsedAt?: Record<string, number>;
+    } || {};
+    const usedAt = Date.now();
+    const docsUsedAt = {...(storage.docsUsedAt || {})};
+    [rootID, ...path.split("/").filter((item) => item.endsWith(".sy")).map((item) => item.replace(/\.sy$/, ""))]
+        .filter(Boolean).forEach((id) => {
+            docsUsedAt[id] = usedAt;
+        });
+    const nextStorage = {...storage, docsUsedAt};
+    window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] = nextStorage;
+    setStorageVal(Constants.LOCAL_KNOWLEDGE, nextStorage);
+};
+
 /// #if !BROWSER
 export const initNativeDialogOverride = () => {
     const originalAlert = window.alert;

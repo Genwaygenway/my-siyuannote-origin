@@ -11,7 +11,8 @@ import {resolveVisibleListMindmapBlock} from "../protyle/render/listMindmap/rend
 import {isInEmbedBlock} from "../protyle/util/hasClosest";
 import {setEditMode} from "../protyle/util/setEditMode";
 import {hideElements} from "../protyle/ui/hideElements";
-import {setStorageVal} from "../protyle/util/compatibility";
+import {pushBack} from "./util/MobileBackFoward";
+import {setStorageVal, updateKnowledgeDocumentUsedAt} from "../protyle/util/compatibility";
 import {showMessage} from "../dialog/message";
 import type {App} from "../index";
 import {initMirror} from "../protyle/undo/globalUndo";
@@ -136,6 +137,8 @@ export const loadMobileFileById = (app: App, id: string, action: TProtyleAction[
             (visibleMindmap === undefined ? blockElement?.clientHeight === 0 :
                 visibleMindmap ? visibleMindmap.scrollElement.clientHeight === 0 : false);
         if (blockElement && !shouldReload) {
+            updateKnowledgeDocumentUsedAt(protyle.notebookId, protyle.path, protyle.block.rootID);
+            pushBack();
             if (action.includes(Constants.CB_GET_HL)) {
                 highlightById(protyle, id, scrollPosition);
             } else {
@@ -186,6 +189,7 @@ export const loadMobileFileById = (app: App, id: string, action: TProtyleAction[
             actionList.push(Constants.CB_GET_SETID);
         }
         const previousRootID = window.siyuan.mobile.editor?.protyle.block.rootID;
+        updateKnowledgeDocumentUsedAt(data.data.box, data.data.path, data.data.rootID);
         const protyleOptions: IProtyleOptions = {
             databaseAttr: true,
             blockId: id,

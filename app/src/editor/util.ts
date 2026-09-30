@@ -54,6 +54,7 @@ const isSameCustomTab = (type: string, data: any, options: IOpenFileOptions) => 
     }
     return objEquals(data, options.custom.data);
 };
+import {updateKnowledgeDocumentUsedAt} from "../protyle/util/compatibility";
 
 export const openFileById = async (options: {
     app: App,
@@ -92,6 +93,7 @@ export const openFileById = async (options: {
         return;
     }
     const zoomIn = options.zoomIn === true && options.id !== response.data.rootID;
+    updateKnowledgeDocumentUsedAt(response.data.box, response.data.path, response.data.rootID);
 
     return openFile({
         app: options.app,

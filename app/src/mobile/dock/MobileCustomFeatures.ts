@@ -58,6 +58,8 @@ class MobileKnowledge implements IMobileFeatureView {
             notebooks?: string[];
             updatedAt?: Record<string, number>;
             removedAt?: Record<string, number>;
+            usedAt?: Record<string, number>;
+            docsUsedAt?: Record<string, number>;
         } || {};
     }
 
@@ -80,8 +82,15 @@ class MobileKnowledge implements IMobileFeatureView {
             const removed = removedAt[notebook.id] || 0;
             return notebookIDs.has(notebook.id) && (updated > removed || updated === 0 && removed === 0);
         }).map((notebook) => notebook.id);
-        window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] = {notebooks, updatedAt, removedAt};
-        setStorageVal(Constants.LOCAL_KNOWLEDGE, {notebooks, updatedAt, removedAt});
+        const nextStorage = {
+            notebooks,
+            updatedAt,
+            removedAt,
+            usedAt: storage.usedAt || {},
+            docsUsedAt: storage.docsUsedAt || {},
+        };
+        window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] = nextStorage;
+        setStorageVal(Constants.LOCAL_KNOWLEDGE, nextStorage);
     }
 
     private getSelectedNotebooks() {
@@ -131,7 +140,8 @@ class MobileKnowledge implements IMobileFeatureView {
             if (!listElement || requestID !== this.requestID || response.code !== 0) {
                 return;
             }
-            const files = response.data.files as IFile[];
+            const docsUsedAt = this.getStorage().docsUsedAt || {};
+            const files = [...response.data.files as IFile[]].sort((a, b) => (docsUsedAt[b.id] || 0) - (docsUsedAt[a.id] || 0));
             listElement.innerHTML = files.length ? files.map((file) => {
                 const hasChildren = file.subFileCount > 0;
                 return `<div class="mobile-knowledge__row">

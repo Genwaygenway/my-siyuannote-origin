@@ -95,6 +95,7 @@ export class Files extends Model {
     private docSortModeChanges = new Map<string, IDocSortModeChanged>();
     private movedExpandedDocIDs = new Set<string>();
     public dockType: "file" | "knowledge";
+    private knowledgeNotebookIds: string[] = [];
 
     constructor(options: { tab: Tab, app: App, dockType?: "file" | "knowledge" }) {
         super({app: options.app});
@@ -1071,9 +1072,14 @@ export class Files extends Model {
             }
             newElement.classList.remove("dragover", "dragover__bottom", "dragover__top");
         });
-        bindSharedStorage(options.tab.panelElement, (key) => {
+        bindSharedStorage(options.tab.panelElement, (key, value) => {
             if (key === Constants.LOCAL_KNOWLEDGE) {
-                this.init(false);
+                const notebookIds = Array.isArray(value?.notebooks) ? value.notebooks : [];
+                if (JSON.stringify(notebookIds) === JSON.stringify(this.knowledgeNotebookIds)) {
+                    this.refreshKnowledgeOrder();
+                } else {
+                    this.init(false);
+                }
             }
         });
         this.init();
@@ -1544,6 +1550,7 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         let closeHtml = "";
         let closeCounter = 0;
         const scrollTop = this.element.scrollTop;
+        this.knowledgeNotebookIds = [...this.getKnowledgeNotebookIds()];
         window.siyuan.notebooks.forEach((item) => {
             const isKnowledge = this.getKnowledgeNotebookIds().includes(item.id);
             if (isKnowledge !== (this.dockType === "knowledge")) {
@@ -1919,6 +1926,48 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         });
     }
 
+    private sortKnowledgeFiles(files: IFile[]) {
+        const docsUsedAt = (window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] as {
+            docsUsedAt?: Record<string, number>;
+        })?.docsUsedAt || {};
+        return [...files].sort((a, b) => (docsUsedAt[b.id] || 0) - (docsUsedAt[a.id] || 0));
+    }
+
+    private refreshKnowledgeOrder() {
+        const docsUsedAt = (window.siyuan.storage[Constants.LOCAL_KNOWLEDGE] as {
+            docsUsedAt?: Record<string, number>;
+        })?.docsUsedAt || {};
+        this.element.querySelectorAll("ul").forEach((list: HTMLElement) => {
+            const elements = Array.from(list.children) as HTMLElement[];
+            if (elements[0]?.getAttribute("data-type") !== "navigation-file") {
+                return;
+            }
+            const groups: {file: HTMLElement, children?: HTMLElement}[] = [];
+            for (let i = 0; i < elements.length; i++) {
+                const file = elements[i];
+                if (file.getAttribute("data-type") !== "navigation-file") {
+                    return;
+                }
+                const children = elements[i + 1]?.tagName === "UL" ? elements[++i] : undefined;
+                groups.push({file, children});
+            }
+            const sorted = [...groups].sort((a, b) =>
+                (docsUsedAt[b.file.getAttribute("data-node-id")] || 0) -
+                (docsUsedAt[a.file.getAttribute("data-node-id")] || 0));
+            if (groups.every((group, index) => group === sorted[index])) {
+                return;
+            }
+            let anchor: HTMLElement = null;
+            for (let i = sorted.length - 1; i >= 0; i--) {
+                list.insertBefore(sorted[i].file, anchor);
+                if (sorted[i].children) {
+                    list.insertBefore(sorted[i].children, anchor);
+                }
+                anchor = sorted[i].file;
+            }
+        });
+    }
+
     private onLsHTML(data: IFileTreeList, scrollTop?: number) {
         this.parentDocClick.cancel();
         if (data.files.length === 0) {
@@ -1929,7 +1978,7 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
             return;
         }
         let fileHTML = "";
-        data.files.forEach((item: IFile) => {
+        this.sortKnowledgeFiles(data.files).forEach((item: IFile) => {
             fileHTML += this.genFileHTML(item);
         });
         const effectiveSortMode = getResponseEffectiveSortMode(data, data.box);
@@ -1987,7 +2036,8 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
 
     private async onLsSelect(data: IFileTreeList, filePath: string, setStorage: boolean, isSetCurrent: boolean) {
         let fileHTML = "";
-        data.files.forEach((item: IFile) => {
+        const files = this.sortKnowledgeFiles(data.files);
+        files.forEach((item: IFile) => {
             fileHTML += this.genFileHTML(item);
         });
         if (fileHTML === "") {
@@ -2009,8 +2059,8 @@ data-type="navigation-root" data-path="/" data-count="${item.subFileCount || 0}"
         liElement.insertAdjacentHTML("afterend", `<ul ${FILE_TREE_EFFECTIVE_SORT_MODE}="${effectiveSortMode}">${fileHTML}</ul>`);
         this.restoreMovedExpandedItems(liElement.nextElementSibling, data.box);
         let newLiElement;
-        for (let i = 0; i < data.files.length; i++) {
-            const item = data.files[i];
+        for (let i = 0; i < files.length; i++) {
+            const item = files[i];
             if (filePath === item.path) {
                 newLiElement = await this.selectItem(data.box, filePath, undefined, setStorage, isSetCurrent);
             } else if (filePath.startsWith(item.path.replace(".sy", ""))) {

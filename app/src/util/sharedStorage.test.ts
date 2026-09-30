@@ -14,6 +14,16 @@ describe("mergeSharedStorageVal", () => {
         assert.deepEqual(removed.notebooks, []);
     });
 
+    it("合并知识库笔记本的最近使用时间", () => {
+        const merged = mergeKnowledgeStorage({usedAt: {first: 10, second: 20}}, {usedAt: {first: 30}});
+        assert.deepEqual(merged.usedAt, {first: 30, second: 20});
+    });
+
+    it("合并知识库文档的最近使用时间", () => {
+        const merged = mergeKnowledgeStorage({docsUsedAt: {first: 10, second: 20}}, {docsUsedAt: {first: 30}});
+        assert.deepEqual(merged.docsUsedAt, {first: 30, second: 20});
+    });
+
     it("按版本合并日历记录并保留删除标记", () => {
         const merged = mergeTodoStorage({
             calendarEntries: [{id: "deleted", text: "旧记录", createdAt: 1, updatedAt: 4, deletedAt: 4}],
