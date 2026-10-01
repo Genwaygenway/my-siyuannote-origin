@@ -10,7 +10,7 @@ import {setStorageVal} from "../../protyle/util/compatibility";
 import {showMessage} from "../../dialog/message";
 import {hideElements} from "../../protyle/ui/hideElements";
 import {getCurrentEditor} from "../editor";
-import {closePanel} from "./closePanel";
+import {closeModel, closePanel} from "./closePanel";
 import {backModel, destroyModel} from "../menu/model";
 
 export const clearMobileBackForward = (notebookId?: string) => {

@@ -172,6 +172,9 @@ importers:
       '@electron/remote':
         specifier: ^2.1.3
         version: 2.1.3(electron@44.4.5(supports-color@8.1.1))
+      chinese-days:
+        specifier: ^1.5.9
+        version: 1.5.9
       zxcvbn:
         specifier: 4.4.2
         version: 4.4.2
@@ -1391,6 +1394,9 @@ packages:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
 
+  chinese-days@1.5.9:
+    resolution: {integrity: sha512-YwWUPcrtzlH5JIkSFCXerKb7Pox85G4LSVLZcrRMAzRuF8FmfmCC/6xGYmDyHtosvaYH/DyI5W8mnYGl01fu0g==}
+
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
@@ -1762,6 +1768,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -4179,6 +4186,8 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
+
+  chinese-days@1.5.9: {}
 
   chokidar@4.0.3:
     dependencies:

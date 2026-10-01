@@ -10,6 +10,11 @@ export const MOBILE_MENU_CLOSE_EVENT = "siyuan-mobile-menu-close";
 export const showPanelMask = () => {
     clearTimeout(hidePanelMaskTimer);
     hidePanelMaskTimer = 0;
+    const maskElement = document.querySelector(".side-mask") as HTMLElement;
+    maskElement?.classList.remove("fn__none");
+    return maskElement;
+};
+
 const hideModel = () => {
     const modelElement = document.getElementById("model");
     modelElement.dispatchEvent(new CustomEvent("siyuan-model-hide"));
@@ -18,10 +23,6 @@ const hideModel = () => {
     modelElement.style.transform = "";
 };
 
-    const maskElement = document.querySelector(".side-mask") as HTMLElement;
-    maskElement?.classList.remove("fn__none");
-    return maskElement;
-};
 
 export const closePanel = (options: {preserveKeyboard?: boolean} = {}) => {
     const secondaryEditor = getActiveMobileSecondaryEditor();

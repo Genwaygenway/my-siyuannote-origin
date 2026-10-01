@@ -18,6 +18,7 @@ import {getDockHotkey} from "./hotkey";
 import {syncDockBarVisibility} from "./barVisibility";
 
 export {adjustDockPadding} from "./barVisibility";
+import {adjustDockPadding} from "./barVisibility";
 
 export const getFileTreeByNotebook = (notebookId: string) =>
     getAllModels().files.find(item => item.containsNotebook(notebookId));

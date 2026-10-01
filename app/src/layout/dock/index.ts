@@ -716,8 +716,6 @@ export class Dock {
         if (show && target.classList.contains("dock__item--active")) {
             target.classList.remove("dock__item--active", "dock__item--activefocus");
         }
-        const index = parseInt(target.getAttribute("data-index"));
-        const wnd = this.layout.children[index] as Wnd;
         const targetId = target.getAttribute("data-id");
         const targetPanel = targetId && Array.from(
             wnd.element.querySelector(".layout-tab-container").children,
@@ -1193,7 +1191,6 @@ export class Dock {
         });
     }
 
-    public add(index: number, sourceElement: Element, previousType?: string) {
     public add(index: number, sourceElement: Element, previousType?: string, options: {
         syncEntryOrders?: boolean,
     } = {}) {

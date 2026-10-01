@@ -94,7 +94,7 @@ const SYSTEM_CATEGORIES = [
 interface ITodoStatisticsEntry extends TTodoStatisticsCategoryInput<ITodoItem> {
     completionRate: number;
     parentCategory?: string;
-    hasChildren?: boolean;
+    hasChildren: boolean;
 }
 
 export class Todo extends Model {
@@ -478,7 +478,7 @@ export class Todo extends Model {
     }
 
     private syncCodexProjectTitles() {
-        fetchPost("/api/system/getCodexProjects", {}, (response) => {
+        (fetchPost as (url: string, body: object, callback: (response: {code: number; data: ITodoCodexProject[]}) => void) => void)("/api/system/getCodexProjects", {}, (response) => {
             if (response.code !== 0 || !Array.isArray(response.data)) {
                 return;
             }
@@ -2182,7 +2182,7 @@ ${details}
         const categories = new Map<string, ITodoStatisticsEntry>();
         const projects = new Map<string, ITodoStatisticsEntry>();
         const addStatistic = (statistics: Map<string, ITodoStatisticsEntry>, name: string, item: ITodoItem) => {
-            const statistic = statistics.get(name) || {
+            const statistic: ITodoStatisticsEntry = statistics.get(name) || {
                 category: name,
                 total: 0,
                 completed: 0,
@@ -2191,6 +2191,7 @@ ${details}
                 completedItems: [],
                 itemIds: [],
                 completedItemIds: [],
+                hasChildren: false,
             };
             statistic.total++;
             statistic.itemIds.push(item.id);

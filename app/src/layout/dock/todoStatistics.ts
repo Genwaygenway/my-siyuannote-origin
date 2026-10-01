@@ -77,7 +77,7 @@ const getTodoStatisticsHierarchy = <T>(
     statistics: TTodoStatisticsCategoryInput<T>[], hierarchy: ITodoStatisticsHierarchyItem[],
 ): ITodoStatisticsCategory<T>[] => {
     const statisticsByCategory = new Map(statistics.map(category => [category.category, category]));
-    return hierarchy.flatMap((categoryItem) => {
+    return hierarchy.flatMap<ITodoStatisticsCategory<T>>((categoryItem) => {
         const directStatistics = statisticsByCategory.get(categoryItem.category);
         if (!categoryItem.hasChildren) {
             if (!directStatistics) {

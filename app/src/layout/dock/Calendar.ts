@@ -147,7 +147,7 @@ export class Calendar extends Model {
         setTimeout(() => {
             const wnds: Wnd[] = [];
             const collect = (layout: Layout | Wnd) => {
-                layout.children.forEach((child: Wnd | Layout) => {
+                (layout.children as Array<Wnd | Layout>).forEach((child) => {
                     if (child instanceof Wnd) {
                         wnds.push(child);
                     } else {

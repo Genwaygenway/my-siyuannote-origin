@@ -384,7 +384,7 @@ export const execByCommand = async (options: {
                 popSearch(options.app, {
                     page: 1,
                     hasReplace: true,
-                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), response.data),
+                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), typeof response.data === "string" ? response.data : ""),
                     idPath: [pathPosix().join(protyle.notebookId, protyle.path)]
                 });
                 /// #else
@@ -432,7 +432,7 @@ export const execByCommand = async (options: {
                 popSearch(options.app, {
                     page: 1,
                     hasReplace: false,
-                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), response.data),
+                    hPath: pathPosix().join(getNotebookName(protyle.notebookId), typeof response.data === "string" ? response.data : ""),
                     idPath: [pathPosix().join(protyle.notebookId, protyle.path)]
                 });
                 /// #else

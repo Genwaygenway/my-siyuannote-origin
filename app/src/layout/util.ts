@@ -385,7 +385,7 @@ const initInternalDock = (dockItem: Config.IUILayoutDockTab[]) => {
     for (let index = dockItem.length - 1; index >= 0; index--) {
         const existSubItem = dockItem[index];
         if ((window.siyuan.isPublish && (existSubItem.type === "inbox" || existSubItem.type === "agentChat" || existSubItem.type === "codexChat")) ||
-            (isDisabledFeature("ai") && existSubItem.type === "agentChat" || existSubItem.type === "codexChat")) {
+            (isDisabledFeature("ai") && existSubItem.type === "agentChat")) {
             dockItem.splice(index, 1);
             continue;
         }
@@ -396,8 +396,6 @@ const initInternalDock = (dockItem: Config.IUILayoutDockTab[]) => {
         if (existSubItem.hotkeyLangId) {
             const title = window.siyuan.languages[existSubItem.hotkeyLangId];
             existSubItem.title = title || (existSubItem.title && existSubItem.title !== "undefined" ? existSubItem.title : existSubItem.hotkeyLangId);
-            const km = window.siyuan.config.keymap.general[existSubItem.hotkeyLangId];
-            existSubItem.hotkey = km ? km.custom : "";
         }
     }
 };
@@ -559,11 +557,11 @@ export const JSONToCenter = (
         }));
     } else if (json.instance === "Tag") {
         (layout as Tab).addModel(new Tag(app, (layout as Tab)));
-    } else if (json.instance === "Todo") {
+    } else if ((json.instance as string) === "Todo") {
         (layout as Tab).addModel(new Todo(app, (layout as Tab), {center: true}));
-    } else if (json.instance === "Knowledge") {
+    } else if ((json.instance as string) === "Knowledge") {
         (layout as Tab).addModel(new Knowledge(app, (layout as Tab)));
-    } else if (json.instance === "Calendar") {
+    } else if ((json.instance as string) === "Calendar") {
         (layout as Tab).addModel(new Calendar(app, (layout as Tab), {center: true}));
     } else if (json.instance === "Search") {
         if (isSensitiveLayoutData(json)) {

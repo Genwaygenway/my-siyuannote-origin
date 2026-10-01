@@ -41,7 +41,7 @@ import {ipcRenderer} from "electron";
 /// #endif
 import {hideTooltip, showTooltip} from "../../dialog/tooltip";
 import {selectOpenTab} from "./util";
-import {hideDragTip, setDragTipGhost, showDragTip, transparentImgSrc} from "../../protyle/util/dragTip";
+import {hideDragTip, setDragTipGhost, showDragTip} from "../../protyle/util/dragTip";
 import {parseBlockDragData} from "../../protyle/util/dragDocument";
 import {
     cancelFileTreeCollapse,

@@ -76,11 +76,11 @@ func UpdateDocRaw(id string, data []byte) (err error) {
 	}
 
 	CreateDocHistory(id)
-	treenode.RemoveBlockTreesByRootID(id)
-	sql.RemoveTreeQueue(id)
+	treenode.RemoveBlockTreesByRootID(bt.BoxID, id)
+	sql.RemoveTreeQueue(bt.BoxID, id)
 	if err = indexWriteTreeIndexQueue(replacementTree); nil != err {
-		treenode.RemoveBlockTreesByRootID(id)
-		sql.RemoveTreeQueue(id)
+		treenode.RemoveBlockTreesByRootID(bt.BoxID, id)
+		sql.RemoveTreeQueue(bt.BoxID, id)
 		if rollbackErr := indexWriteTreeIndexQueue(currentTree); nil != rollbackErr {
 			return fmt.Errorf("replace document failed: %w; rollback failed: %v", err, rollbackErr)
 		}
